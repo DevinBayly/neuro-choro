@@ -1,5 +1,5 @@
 import geodata from "./gz_2010_us_040_00_500k.json"
-import brain from "./GeoJson_Brains/ax_108_inf_-18mm.json"
+import brain from "./GeoJson_Brains/sag_228_L_-24mm.json"
 
 let interpolator = () => {
   let ob = {}
@@ -15,16 +15,16 @@ let interpolator = () => {
   return ob
 }
 
-let globals =[33,65,320,391]
+let globals =[41,15,392,298]
 let drawLine = (linedata,ctx)=> {
   let ob = {}
   // need canvas ref
   //create interpolator
   //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
   let xinterp = interpolator()
-  xinterp.setup(globals[0],0,globals[2],5000)
+  xinterp.setup(globals[0],0,globals[2],500)
   let yinterp = interpolator()
-  yinterp.setup(globals[1],5000,globals[3],0)
+  yinterp.setup(globals[1],500,globals[3],0)
   ob.draw =() => {
     ctx.beginPath()
     let first = linedata[0]
@@ -53,11 +53,13 @@ let drawLine = (linedata,ctx)=> {
     }
     ctx.closePath()
     ctx.stroke()
+    ctx.fillStyle=`rgb(${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)},${Math.floor(Math.random()*255)})`
+    ctx.fill()
   }
   return ob
 }
 
-let setup = () => {
+let setup = (lwidth) => {
   let ob = {}
   ob.begin = (height,width) => {
     let can = document.createElement("canvas")
@@ -66,6 +68,7 @@ let setup = () => {
     can.height = height
     can.width = width
     ob.ctx = can.getContext("2d")
+    ob.ctx.lineWidth= lwidth
   }
   return ob
 }
@@ -94,15 +97,35 @@ let featurePass = (drawing,upperData) => {
   return ob
 }
 
+
+// lifted from stack overflow
+
+let getPos = (can,e) => {
+  debugger
+  let rect = can.getBoundingClientRect()
+  let x = e.clientX - rect.left
+  let y = e.clientY - rect.top
+  console.log("x: ",x, "y: ", y)
+}
+
+
 //for each state have something which goes through the 
 //  coordinates is an array of 
 //
 // aim for as much functional as possible
 
-let drawing = setup()
+
+
+let drawing = setup(3)
 console.log(brain)
-drawing.begin(5000,5000)
+drawing.begin(500,500)
 let allfeatures = featurePass(drawing,brain)
 allfeatures.mapFeatures()
 console.log(geodata)
 console.log(globals)
+console.log(Math.floor(Math.random()*255))
+let can = document.querySelector("canvas")
+can.addEventListener("click",(e)=> {
+  getPos(can,e)
+})
+
