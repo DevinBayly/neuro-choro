@@ -1,7 +1,9 @@
 import geodata from "./gz_2010_us_040_00_500k.json"
-import brain from "./GeoJson_Brains/sag_228_L_-24mm.json"
+import sliceData from "./GeoJson_Brains/total.json"
 import csvData from "./WeaveTutorial/Tables/indiv_run_summary_pos_thresh_ice_perc_sum.csv"
 
+let brain
+let globalinfo
 let interpolator = () => {
   let ob = {}
   ob.setup = (x0,y0,x1,y1) => {
@@ -16,7 +18,6 @@ let interpolator = () => {
   return ob
 }
 
-let globals =[41,15,392,298]
 let LerpCol = (c1,c2,t) => {
   let red = c1.r + ( c2.r - c1.r) *t
   let blue = c1.b + ( c2.b - c1.b) *t
@@ -24,6 +25,50 @@ let LerpCol = (c1,c2,t) => {
   return `rgb(${red},${green},${blue})`
 
 }
+
+let globals = (scanCol)=> {
+  // scanCol is the column that has the data we care about putting in the color fill
+  // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
+  let ob ={}
+  let globals = [1000,1000,-1000,-1000]
+  for (let feature of brain.features) {
+    for (let line of feature.geometry.coordinates) {
+      for (let pt of line) {
+        if (pt[0] < globals[0]) {
+          globals[0] = pt[0]
+        }
+        if( pt[1] < globals[1] ){
+          globals[1] = pt[1]
+        }
+        if (pt[0] > globals[2]) {
+          globals[2] = pt[0]
+        }
+        if( pt[1] > globals[3]) {
+          globals[3] = pt[1]
+        }
+      }
+    }
+  }
+  ob.globals = globals
+  ob.scanDatamin =0
+  ob.scanDatamax =0
+  for (let row of csvData ) {
+    if (row[scanCol] > ob.scanDatamax) {
+      ob.scanDatamax = parseFloat(row[scanCol])
+    }
+    if (row[scanCol] < ob.scanDatamin) {
+      ob.scanDatamin = parseFloat(row[scanCol])
+    }
+  }
+  // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
+
+  let scanScalar =interpolator()
+  scanScalar.setup(ob.scanDatamin,0,ob.scanDatamax,1)
+  ob.scanScalar = scanScalar
+  // calculate the min and maxes of the scan data for each scan
+  return ob
+}
+
 let drawLine = (linedata,ctx)=> {
   //linedata  = {points,region}
   let ob = {}
@@ -31,9 +76,9 @@ let drawLine = (linedata,ctx)=> {
   //create interpolator
   //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
   let xinterp = interpolator()
-  xinterp.setup(globals[0],0,globals[2],500)
+  xinterp.setup(globalinfo.globals[0],0,globalinfo.globals[2],500)
   let yinterp = interpolator()
-  yinterp.setup(globals[1],500,globals[3],0)
+  yinterp.setup(globalinfo.globals[1],500,globalinfo.globals[3],0)
   ob.draw =() => {
     ctx.beginPath()
     let red = {
@@ -57,18 +102,6 @@ let drawLine = (linedata,ctx)=> {
       let y = yinterp.calc(pt[1])
       ctx.lineTo(x,y)
       // update the data
-      if (pt[0] < globals[0]) {
-        globals[0] = pt[0]
-      }
-      if( pt[1] < globals[1] ){
-        globals[1] = pt[1]
-      }
-      if (pt[0] > globals[2]) {
-        globals[2] = pt[0]
-      }
-      if( pt[1] > globals[3]) {
-        globals[3] = pt[1]
-      }
     }
     ctx.closePath()
     ctx.stroke()
@@ -76,9 +109,9 @@ let drawLine = (linedata,ctx)=> {
       // the important parts of the dataset are in column 0 and column 9
       if ( linedata.region == row[0] ) {
         // the min appears to be almost 0 and the max should come in around 0.006
-        let scanData = parseFloat(row[9])
+        let scanData = parseFloat(row[12])
         if (! isNaN(scanData)) {
-          let  t = scanData/0.006 
+          let  t = globalinfo.scanScalar.calc(scanData)
           console.log(t)
           let lerpc = LerpCol(yellow,red,t)
           ctx.fillStyle=lerpc
@@ -138,31 +171,86 @@ let featurePass = (drawing,upperData) => {
 
 // lifted from stack overflow
 
-let getPos = (can,e) => {
-  let rect = can.getBoundingClientRect()
-  let x = e.clientX - rect.left
-  let y = e.clientY - rect.top
-  console.log("x: ",x, "y: ", y)
-}
-
-
 //for each state have something which goes through the 
 //  coordinates is an array of 
 //
 // aim for as much functional as possible
 
+let pointInPoly = (x,y,allRegionsData) => {
+  let ob = {}
+  ob.checkinside = (regionData) => {
+    // this compares a current region to the existing x,y
+    // calculate the line from the far left to the point
+    // probably need an epsilon for the comparison between horizontal and region points because they might not always equal
+    let within = false
+    for (let xi = 0;xi < x;xi++) {
+      for (let rdi = 0;rdi< regionData.length;rdi++) {
+        if (xi == regionData[rdi][0] && y == regionData[rdi][1]){
+          // flip it so that on an odd number of hits to this conditional we wind up with a true coming back
+          console.log("hit")
+          within= !within
+        }
+      }
+    }
+    return within
+  }
+  ob.iterRegions = () => {
+    // the regions data is technically the brain.features, so we iter over the regionss in the same way as drawing them
+    for (let feature of allRegionsData.features) {
+      // now geometry and coordinates, check for within is true, and end there if so
+      console.log("feature check")
+      let within = ob.checkinside(feature.geometry.coordinates)
+      if (within) {
+        // create a little info blob at the cursor on the canvas with the region data and the activation amounts
+        console.log(feature.properties)
+        break
+      }
+    }
+  }
+  return ob
+}
+
+let sliceSelect = () => {
+  let ob = {}
+  ob.createtag = ()=> {
+    let s = document.createElement("select")
+    for (let n in sliceData) {
+      let op = document.createElement("option")
+      op.setAttribute("value",  n)
+      op.innerHTML = n
+      s.append(op)
+    }
+    document.body.append(s)
+    s.onchange =()=> {
+      console.log("changed",s.value)
+      brain = sliceData[s.value]
+      globalinfo = globals(9)
+      let drawing = setup(3)
+      console.log(brain)
+      drawing.begin(500,500)
+      let allfeatures = featurePass(drawing,brain)
+      allfeatures.mapFeatures()
+      console.log(globals)
+      console.log(Math.floor(Math.random()*255))
+      let getPos = (can,e) => {
+        let rect = can.getBoundingClientRect()
+        let x = e.clientX - rect.left
+        let y = e.clientY - rect.top
+        console.log("x: ",x, "y: ", y)
+        // activate the border point-in-polygon algorithm
+        let pip = pointInPoly(x,y,brain)
+        pip.iterRegions()
+      }
+
+      drawing.can.addEventListener("click",(e)=> {
+        getPos(drawing.can,e)
+      })
+      
+    }
+  }
+  return ob
+}
 
 
-let drawing = setup(3)
-console.log(brain)
-drawing.begin(500,500)
-let allfeatures = featurePass(drawing,brain)
-allfeatures.mapFeatures()
-console.log(globals)
-console.log(Math.floor(Math.random()*255))
-let can = document.querySelector("canvas")
-can.addEventListener("click",(e)=> {
-  getPos(can,e)
-})
-console.log(csvData)
-let accessdata = csvData
+let selection = sliceSelect()
+selection.createtag()
