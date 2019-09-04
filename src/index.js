@@ -4,6 +4,21 @@ import csvData from "./WeaveTutorial/Tables/indiv_run_summary_pos_thresh_ice_per
 
 let brain
 let globalinfo
+let gapLessData ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
+let parametricInterp = () => {
+  let ob = {}
+  ob.setupRun = (x0,y0,x1,y1,step) => {
+    let xys = []
+    for (let t = 0;t < 1;t+= step) {
+      xys.push(ob.calct(x0,y0,x1,y1,t))
+    }
+    return xys
+  }
+  ob.calct = (x0,y0,x1,y1,t) => {
+    return [x0 + (x1 - x0)*t,y0 + (y1 - y0)*t]
+  }
+  return ob 
+}
 let interpolator = () => {
   let ob = {}
   ob.setup = (x0,y0,x1,y1) => {
@@ -72,6 +87,7 @@ let globals = (scanCol)=> {
 let drawLine = (linedata,ctx)=> {
   //linedata  = {points,region}
   let ob = {}
+
   // need canvas ref
   //create interpolator
   //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
@@ -88,20 +104,29 @@ let drawLine = (linedata,ctx)=> {
     }
     let yellow = {
       r:255,
-      g:236,
-      b:0
+      g:255,
+      b:255
     }
     let first = linedata.points[0]
     let x = xinterp.calc(first[0])
     let y = yinterp.calc(first[1])
-
+    let last = [x,y]
+    // create gaplessEntry
+    gapLessData[linedata.region] = []
     ctx.moveTo(x,y)
     for (let i = 1; i < linedata.points.length;i++) {
       let pt = linedata.points[i]
       let x = xinterp.calc(pt[0])
       let y = yinterp.calc(pt[1])
+      // do parametric interpolation of points between last x,y and the present one
+      //
+      let paraInterp = parametricInterp()
+      let pointdata = paraInterp.setupRun(last[0],last[1],x,y,.3)
+      gapLessData[linedata.region].push(...pointdata) // use spread to not nest here
       ctx.lineTo(x,y)
       // update the data
+      last[0] = x
+      last[1] = y
     }
     ctx.closePath()
     ctx.stroke()
@@ -117,6 +142,7 @@ let drawLine = (linedata,ctx)=> {
           ctx.fillStyle=lerpc
           ctx.fill()
         }
+
         break
       }
     }
@@ -176,7 +202,7 @@ let featurePass = (drawing,upperData) => {
 //
 // aim for as much functional as possible
 
-let pointInPoly = (x,y,allRegionsData) => {
+let pointInPoly = (x,y,epsilon,drawing) => {
   let ob = {}
   ob.checkinside = (regionData) => {
     // this compares a current region to the existing x,y
@@ -184,9 +210,15 @@ let pointInPoly = (x,y,allRegionsData) => {
     // probably need an epsilon for the comparison between horizontal and region points because they might not always equal
     let within = false
     for (let xi = 0;xi < x;xi++) {
+      drawing.ctx.fillStyle = "red"
+      drawing.ctx.fillRect(xi,y,3,3)
       for (let rdi = 0;rdi< regionData.length;rdi++) {
-        if (xi == regionData[rdi][0] && y == regionData[rdi][1]){
+        // ust to visually debug add color to points along this line
+        if (Math.abs(xi -regionData[rdi][0]) < epsilon && Math.abs(y - regionData[rdi][1]) < epsilon){
+        drawing.ctx.fillStyle = "green"
+        drawing.ctx.fillRect(regionData[rdi][0],regionData[rdi][1],3,3)
           // flip it so that on an odd number of hits to this conditional we wind up with a true coming back
+          //
           console.log("hit")
           within= !within
         }
@@ -196,13 +228,15 @@ let pointInPoly = (x,y,allRegionsData) => {
   }
   ob.iterRegions = () => {
     // the regions data is technically the brain.features, so we iter over the regionss in the same way as drawing them
-    for (let feature of allRegionsData.features) {
+    for (let region in gapLessData) {
       // now geometry and coordinates, check for within is true, and end there if so
+      // changing the datatype getting used
+      let regionData = gapLessData[region]
       console.log("feature check")
-      let within = ob.checkinside(feature.geometry.coordinates)
+      let within = ob.checkinside(regionData)
       if (within) {
         // create a little info blob at the cursor on the canvas with the region data and the activation amounts
-        console.log(feature.properties)
+        console.log(region)
         break
       }
     }
@@ -238,13 +272,14 @@ let sliceSelect = () => {
         let y = e.clientY - rect.top
         console.log("x: ",x, "y: ", y)
         // activate the border point-in-polygon algorithm
-        let pip = pointInPoly(x,y,brain)
+        let pip = pointInPoly(x,y,.2,drawing)
         pip.iterRegions()
       }
 
       drawing.can.addEventListener("click",(e)=> {
         getPos(drawing.can,e)
       })
+      console.log(gapLessData)
       
     }
   }
