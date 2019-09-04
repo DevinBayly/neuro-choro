@@ -4,7 +4,7 @@ import csvData from "./WeaveTutorial/Tables/indiv_run_summary_pos_thresh_ice_per
 
 let brain
 let globalinfo
-let gapLessData ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
+let pointValues ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
 let parametricInterp = () => {
   let ob = {}
   ob.setupRun = (x0,y0,x1,y1,step) => {
@@ -112,7 +112,7 @@ let drawLine = (linedata,ctx)=> {
     let y = yinterp.calc(first[1])
     let last = [x,y]
     // create gaplessEntry
-    gapLessData[linedata.region] = []
+    pointValues[linedata.region] =[[x,y]]
     ctx.moveTo(x,y)
     for (let i = 1; i < linedata.points.length;i++) {
       let pt = linedata.points[i]
@@ -120,13 +120,9 @@ let drawLine = (linedata,ctx)=> {
       let y = yinterp.calc(pt[1])
       // do parametric interpolation of points between last x,y and the present one
       //
-      let paraInterp = parametricInterp()
-      let pointdata = paraInterp.setupRun(last[0],last[1],x,y,.3)
-      gapLessData[linedata.region].push(...pointdata) // use spread to not nest here
+      pointValues[linedata.region].push([x,y])
       ctx.lineTo(x,y)
       // update the data
-      last[0] = x
-      last[1] = y
     }
     ctx.closePath()
     ctx.stroke()
@@ -204,39 +200,47 @@ let featurePass = (drawing,upperData) => {
 
 let pointInPoly = (x,y,epsilon,drawing) => {
   let ob = {}
+  // interpolate
   ob.checkinside = (regionData) => {
     // this compares a current region to the existing x,y
     // calculate the line from the far left to the point
     // probably need an epsilon for the comparison between horizontal and region points because they might not always equal
+    // in each region just count the values that are close to that y value, and then print them plus the x, y
+    let hits = [] 
+    // interpolate, but 
     let within = false
-    for (let xi = 0;xi < x;xi++) {
-      drawing.ctx.fillStyle = "red"
-      drawing.ctx.fillRect(xi,y,3,3)
-      for (let rdi = 0;rdi< regionData.length;rdi++) {
-        // ust to visually debug add color to points along this line
-        if (Math.abs(xi -regionData[rdi][0]) < epsilon && Math.abs(y - regionData[rdi][1]) < epsilon){
-        drawing.ctx.fillStyle = "green"
-        drawing.ctx.fillRect(regionData[rdi][0],regionData[rdi][1],3,3)
-          // flip it so that on an odd number of hits to this conditional we wind up with a true coming back
-          //
-          console.log("hit")
-          within= !within
+    for (let i = 0; i < regionData.length-1;i++) {
+      // perform step interpolation 
+      let subdata = parametricInterp()
+      let xprev = regionData[i][0]
+      let yprev = regionData[i][1]
+      let xnext = regionData[i+1][0]
+      let ynext = regionData[i+1][1]
+      for (let pt of subdata.setupRun(xprev,yprev,xnext,ynext,.25)) {
+        if (Math.abs(y - pt[1]) < epsilon && x > pt[0]) {
+          hits.push(pt)
+          console.log(y,Math.abs(y - pt[1]), x, pt[0])
+          within = ! within
         }
       }
     }
+    if (within) {
+      console.log(hits)
+    }
+    // now go through the hits and only take the ones that are less than the x
     return within
   }
   ob.iterRegions = () => {
     // the regions data is technically the brain.features, so we iter over the regionss in the same way as drawing them
-    for (let region in gapLessData) {
+    for (let region in pointValues ) {
       // now geometry and coordinates, check for within is true, and end there if so
       // changing the datatype getting used
-      let regionData = gapLessData[region]
-      console.log("feature check")
-      let within = ob.checkinside(regionData)
+      let rdat = pointValues[region]
+      let within = ob.checkinside(rdat)
+      console.log("investigating ",region)
       if (within) {
+        console.log("yes")
         // create a little info blob at the cursor on the canvas with the region data and the activation amounts
-        console.log(region)
         break
       }
     }
@@ -279,7 +283,6 @@ let sliceSelect = () => {
       drawing.can.addEventListener("click",(e)=> {
         getPos(drawing.can,e)
       })
-      console.log(gapLessData)
       
     }
   }
