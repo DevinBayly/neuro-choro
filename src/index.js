@@ -216,7 +216,7 @@ let pointInPoly = (x,y,epsilon,drawing) => {
       let yprev = regionData[i][1]
       let xnext = regionData[i+1][0]
       let ynext = regionData[i+1][1]
-      for (let pt of subdata.setupRun(xprev,yprev,xnext,ynext,.25)) {
+      for (let pt of subdata.setupRun(xprev,yprev,xnext,ynext,.1)) {
         if (Math.abs(y - pt[1]) < epsilon && x > pt[0]) {
           hits.push(pt)
           console.log(y,Math.abs(y - pt[1]), x, pt[0])
@@ -276,7 +276,7 @@ let sliceSelect = () => {
         let y = e.clientY - rect.top
         console.log("x: ",x, "y: ", y)
         // activate the border point-in-polygon algorithm
-        let pip = pointInPoly(x,y,.2,drawing)
+        let pip = pointInPoly(x,y,.05,drawing)
         pip.iterRegions()
       }
 
