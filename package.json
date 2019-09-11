@@ -1,0 +1,30 @@
+{
+  "name": "choropleth",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "webpack-dev-server --open",
+    "build": "webpack"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "babel-loader": "^8.0.6",
+    "csv-loader": "^3.0.2",
+    "json-loader": "^0.5.7",
+    "papaparse": "^5.0.2",
+    "webpack": "^4.39.2",
+    "webpack-cli": "^3.3.6",
+    "webpack-dev-server": "^3.8.0",
+    "xml-loader": "^1.2.1"
+  },
+  "dependencies": {
+    "plotly": "^1.0.6",
+    "plotly.js": "^1.49.2"
+  }
+}
