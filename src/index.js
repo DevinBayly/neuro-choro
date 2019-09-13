@@ -5,28 +5,60 @@ let pane = (number)=> {
   let ob = {}
   ob.create = ()=> {
     // want radio w 3 buttons, range slider, selection form for loading
-    let div = document.createElement("div")
-    div.setAttribute("id",`paneholder${number}`)
-    div.style.setProperty("background","aliceblue")
+    let paneDiv = document.createElement("div")
+    paneDiv.setAttribute("id",`paneholder${number}`)
+    paneDiv.style.setProperty("background","aliceblue")
     let range = document.createElement("input")
     range.type="range"
-    div.append(range)
-    let drawing = setup(3,div)
+    paneDiv.append(range)
+    let drawing = setup(3,paneDiv)
     drawing.begin()
-    let sliceSelection = sliceSelect(div)
+    let sliceSelection = sliceSelect(paneDiv)
     let rangeData = rangePrep()
+    range.value = 20
     // make the range slider tied to slice lookup
     // start with sagittal
-    range.min= 0
-    range.max = rangeData.axial.length-1
-    range.step = 1
-    range.onchange = ()=> {
-      let ind = parseInt(range.value)
-      let name = rangeData["sagittal"][ind]
-      sliceSelection.createImage(name,drawing)
-
+    let mkradio = (view,radionum) => {
+      let rad = document.createElement("input")
+      rad.type = "radio"
+      rad.id = "radio"+view
+      rad.name = "view"+radionum
+      rad.value = view
+      let label = document.createElement("label") 
+      label.setAttribute("for",rad.id)
+      label.innerHTML = view
+      let div = document.createElement("div")
+      div.id = "radcontainer"+view
+      div.append(rad)
+      div.append(label)
+      paneDiv.append(div)
     }
-    document.body.append(div)
+    let selected 
+    let getRadioSelected = ()=> {
+      if (paneDiv.querySelector("#radiosagittal").checked) {
+        selected = "sagittal"
+      }
+      if (paneDiv.querySelector("#radiocoronal").checked) {
+        selected = "coronal"
+      }
+      if (paneDiv.querySelector("#radioaxial").checked) {
+        selected = "axial"
+      }
+    }
+    mkradio("axial",number)
+    mkradio("sagittal",number)
+    mkradio("coronal",number)
+    range.oninput = ()=> {
+      getRadioSelected()
+      let ind = parseInt(range.value)
+      let name = rangeData[selected][ind]
+      range.min= 0
+      range.max = rangeData[selected].length-1
+      range.step = 1
+      sliceSelection.createImage(name,drawing)
+    }
+    // setup the radio buttons
+    document.body.append(paneDiv)
   }
   // setup a div with a canvas inside of it
   return ob
@@ -39,7 +71,7 @@ let addButton = ()=> {
     let btn = document.createElement("button")
     btn.onclick = ()=> {
       // create a pane
-      let first = pane()
+      let first = pane(ob.count)
       console.log("adding pane")
       first.create(ob.count)
       ob.count+=1
