@@ -11,8 +11,9 @@ let pane = (number)=> {
     let range = document.createElement("input")
     range.type="range"
     div.append(range)
+    let drawing = setup(3,div)
+    drawing.begin()
     let sliceSelection = sliceSelect(div)
-    sliceSelection.createtag()
     let rangeData = rangePrep()
     // make the range slider tied to slice lookup
     // start with sagittal
@@ -22,7 +23,7 @@ let pane = (number)=> {
     range.onchange = ()=> {
       let ind = parseInt(range.value)
       let name = rangeData["sagittal"][ind]
-      sliceSelection.createImage(name)
+      sliceSelection.createImage(name,drawing)
 
     }
     document.body.append(div)
@@ -203,13 +204,15 @@ let drawLine = (linedata,ctx)=> {
 
 let setup = (lwidth,paneHolder) => {
   let ob = {}
-  ob.begin = (height,width,margin) => {
+  ob.begin = () => {
     let can = document.createElement("canvas")
     paneHolder.append(can)
     ob.can = can
-    can.height = height + margin
-    can.width = width + margin
     ob.ctx = can.getContext("2d")
+  }
+  ob.resize =(height,width,margin) => {
+    ob.can.height = height + margin
+    ob.can.width = width + margin
     ob.ctx.lineWidth= lwidth
   }
   return ob
@@ -335,17 +338,13 @@ let rangePrep = ()=> {
 
 let sliceSelect = (paneHolder) => {
   let ob = {}
-  ob.createtag = ()=> {
-    let s = document.createElement("select")
-    paneHolder.append(s)
-  }
-  ob.createImage = (slice) =>  {
+  ob.createImage = (slice,drawing) =>  {
+    drawing.ctx.clearRect(0,0,drawing.can.height,drawing.can.width)
     brain = sliceData[slice]
     globalinfo = globals(9)
+    drawing.resize(500*globalinfo.ratio,500,20)
     // data height vs width ration
-    let drawing = setup(3,paneHolder)
     console.log(brain)
-    drawing.begin(500*globalinfo.ratio,500,20)
     let allfeatures = featurePass(drawing,brain)
     allfeatures.mapFeatures()
     console.log(globals)
