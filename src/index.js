@@ -12,8 +12,19 @@ let pane = (number)=> {
     range.type="range"
     div.append(range)
     let sliceSelection = sliceSelect(div)
-    let rangeData = rangePrep()
     sliceSelection.createtag()
+    let rangeData = rangePrep()
+    // make the range slider tied to slice lookup
+    // start with sagittal
+    range.min= 0
+    range.max = rangeData.axial.length-1
+    range.step = 1
+    range.onchange = ()=> {
+      let ind = parseInt(range.value)
+      let name = rangeData["sagittal"][ind]
+      sliceSelection.createImage(name)
+
+    }
     document.body.append(div)
   }
   // setup a div with a canvas inside of it
@@ -312,58 +323,47 @@ let rangePrep = ()=> {
     }
   }
   let sortfunc = (x,y) => {
-    console.log(y)
-    console.log(x)
     let xmm = parseInt(x.match(/(-?\d+)(mm)?.json/)[1])
     let ymm = parseInt(y.match(/(-?\d+)(mm)?.json/)[1])
     return xmm - ymm
   }
-  console.log(slicesByView)
   slicesByView.axial.sort(sortfunc)
   slicesByView.sagittal.sort(sortfunc)
   slicesByView.coronal.sort(sortfunc)
-  debugger
+  return slicesByView
 }
 
 let sliceSelect = (paneHolder) => {
   let ob = {}
   ob.createtag = ()=> {
     let s = document.createElement("select")
-    for (let n in sliceData) {
-      let op = document.createElement("option")
-      op.setAttribute("value",  n)
-      op.innerHTML = n
-      s.append(op)
-    }
-    //pane holder attach
     paneHolder.append(s)
-    s.onchange =()=> {
-      console.log("changed",s.value)
-      brain = sliceData[s.value]
-      globalinfo = globals(9)
-      // data height vs width ration
-      let drawing = setup(3,paneHolder)
-      console.log(brain)
-      drawing.begin(500*globalinfo.ratio,500,20)
-      let allfeatures = featurePass(drawing,brain)
-      allfeatures.mapFeatures()
-      console.log(globals)
-      console.log(Math.floor(Math.random()*255))
-      let getPos = (can,e) => {
-        let rect = can.getBoundingClientRect()
-        let x = e.clientX - rect.left
-        let y = e.clientY - rect.top
-        console.log("x: ",x, "y: ", y)
-        // activate the border point-in-polygon algorithm
-        let pip = pointInPoly(x,y,.05,drawing)
-        pip.iterRegions()
-      }
-
-      drawing.can.addEventListener("click",(e)=> {
-        getPos(drawing.can,e)
-      })
-      
+  }
+  ob.createImage = (slice) =>  {
+    brain = sliceData[slice]
+    globalinfo = globals(9)
+    // data height vs width ration
+    let drawing = setup(3,paneHolder)
+    console.log(brain)
+    drawing.begin(500*globalinfo.ratio,500,20)
+    let allfeatures = featurePass(drawing,brain)
+    allfeatures.mapFeatures()
+    console.log(globals)
+    console.log(Math.floor(Math.random()*255))
+    let getPos = (can,e) => {
+      let rect = can.getBoundingClientRect()
+      let x = e.clientX - rect.left
+      let y = e.clientY - rect.top
+      console.log("x: ",x, "y: ", y)
+      // activate the border point-in-polygon algorithm
+      let pip = pointInPoly(x,y,.05,drawing)
+      pip.iterRegions()
     }
+
+    drawing.can.addEventListener("click",(e)=> {
+      getPos(drawing.can,e)
+    })
+
   }
   return ob
 }
