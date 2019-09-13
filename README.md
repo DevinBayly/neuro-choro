@@ -9,4 +9,4 @@ This repository contains the development of a research imaging tool allowing res
 * Start up the program using ```npm run start```
 * Navigate to localhost:8080
 
-![](Screenshot_2019-09-13 Screenshot.png)
+![](test.png)
