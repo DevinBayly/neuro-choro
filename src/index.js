@@ -1,6 +1,48 @@
 import geodata from "./gz_2010_us_040_00_500k.json"
 import sliceData from "./GeoJson_Brains/total.json"
 import csvData from "./WeaveTutorial/Tables/indiv_run_summary_pos_thresh_ice_perc_sum.csv"
+let pane = (number)=> {
+  let ob = {}
+  ob.create = ()=> {
+    // want radio w 3 buttons, range slider, selection form for loading
+    let div = document.createElement("div")
+    div.setAttribute("id",`paneholder${number}`)
+    div.style.setProperty("background","aliceblue")
+    let range = document.createElement("input")
+    range.type="range"
+    div.append(range)
+    let sliceSelection = sliceSelect(div)
+    let rangeData = rangePrep()
+    sliceSelection.createtag()
+    document.body.append(div)
+  }
+  // setup a div with a canvas inside of it
+  return ob
+}
+
+let addButton = ()=> {
+  let ob = {}
+  ob.count = 0
+  ob.create = ()=> {
+    let btn = document.createElement("button")
+    btn.onclick = ()=> {
+      // create a pane
+      let first = pane()
+      console.log("adding pane")
+      first.create(ob.count)
+      ob.count+=1
+    }
+    btn.setAttribute("id","addbtn")
+    btn.innerHTML = "Add Pane"
+    document.body.append(btn)
+
+  }
+  return ob
+}
+
+
+let btn1 = addButton()
+btn1.create()
 
 let brain
 let globalinfo
@@ -65,6 +107,7 @@ let globals = (scanCol)=> {
     }
   }
   ob.globals = globals
+  ob.ratio = globals[3]/globals[2]
   ob.scanDatamin =0
   ob.scanDatamax =0
   for (let row of csvData ) {
@@ -92,9 +135,10 @@ let drawLine = (linedata,ctx)=> {
   //create interpolator
   //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
   let xinterp = interpolator()
-  xinterp.setup(globalinfo.globals[0],0,globalinfo.globals[2],500)
+  xinterp.setup(globalinfo.globals[0],0+10,globalinfo.globals[2],500+10)
   let yinterp = interpolator()
-  yinterp.setup(globalinfo.globals[1],500,globalinfo.globals[3],0)
+  yinterp.setup(globalinfo.globals[1],(500+10)*globalinfo.ratio,globalinfo.globals[3],10)// extra 10is the margin split intwo
+  //TODO find better version of how to structure so that the margin can be programmatically set
   ob.draw =() => {
     ctx.beginPath()
     let red = {
@@ -146,14 +190,14 @@ let drawLine = (linedata,ctx)=> {
   return ob
 }
 
-let setup = (lwidth) => {
+let setup = (lwidth,paneHolder) => {
   let ob = {}
-  ob.begin = (height,width) => {
+  ob.begin = (height,width,margin) => {
     let can = document.createElement("canvas")
-    document.body.append(can)
+    paneHolder.append(can)
     ob.can = can
-    can.height = height
-    can.width = width
+    can.height = height + margin
+    can.width = width + margin
     ob.ctx = can.getContext("2d")
     ob.ctx.lineWidth= lwidth
   }
@@ -248,7 +292,40 @@ let pointInPoly = (x,y,epsilon,drawing) => {
   return ob
 }
 
-let sliceSelect = () => {
+let rangePrep = ()=> {
+  // we will create and sort 3 element array of the data
+  let slicesByView = {
+    "sagittal":[],
+    "axial":[],
+    "coronal":[]
+  }
+  for (let n in sliceData) {
+    if (n.search(/cor/) == 0) {
+      slicesByView["sagittal"].push(n)
+    }
+    if (n.search(/sag/) == 0) {
+      slicesByView["axial"].push(n)
+    }
+    if (n.search(/ax/) == 0) {
+
+      slicesByView["coronal"].push(n)
+    }
+  }
+  let sortfunc = (x,y) => {
+    console.log(y)
+    console.log(x)
+    let xmm = parseInt(x.match(/(-?\d+)(mm)?.json/)[1])
+    let ymm = parseInt(y.match(/(-?\d+)(mm)?.json/)[1])
+    return xmm - ymm
+  }
+  console.log(slicesByView)
+  slicesByView.axial.sort(sortfunc)
+  slicesByView.sagittal.sort(sortfunc)
+  slicesByView.coronal.sort(sortfunc)
+  debugger
+}
+
+let sliceSelect = (paneHolder) => {
   let ob = {}
   ob.createtag = ()=> {
     let s = document.createElement("select")
@@ -258,14 +335,16 @@ let sliceSelect = () => {
       op.innerHTML = n
       s.append(op)
     }
-    document.body.append(s)
+    //pane holder attach
+    paneHolder.append(s)
     s.onchange =()=> {
       console.log("changed",s.value)
       brain = sliceData[s.value]
       globalinfo = globals(9)
-      let drawing = setup(3)
+      // data height vs width ration
+      let drawing = setup(3,paneHolder)
       console.log(brain)
-      drawing.begin(500,500)
+      drawing.begin(500*globalinfo.ratio,500,20)
       let allfeatures = featurePass(drawing,brain)
       allfeatures.mapFeatures()
       console.log(globals)
@@ -290,5 +369,3 @@ let sliceSelect = () => {
 }
 
 
-let selection = sliceSelect()
-selection.createtag()
