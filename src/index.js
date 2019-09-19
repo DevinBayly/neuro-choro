@@ -4,7 +4,7 @@ import sliceData from "./GeoJson_Brains/total.json"
 
 let brain
 let globalinfo
-let csvData
+let csvData = {}// organized by pane count ids
 let csvRegionArray
 
 
@@ -45,7 +45,7 @@ let LerpCol = (c1,c2,t) => {
 
 }
 
-let globals = (scanCol)=> {
+let globals = (activationData)=> {
   // scanCol is the column that has the data we care about putting in the color fill
   // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
   let ob ={}
@@ -72,7 +72,7 @@ let globals = (scanCol)=> {
   ob.ratio = globals[3]/globals[2]
   ob.scanDatamin =0
   ob.scanDatamax =0
-  for (let row of csvData ) {
+  for (let row of activationData ) {
     if (row > ob.scanDatamax) {
       ob.scanDatamax = parseFloat(row)
     }
@@ -88,7 +88,7 @@ let globals = (scanCol)=> {
   return ob
 }
 
-let drawLine = (linedata,ctx)=> {
+let drawLine = (linedata,ctx,activationData)=> {
   //linedata  = {points,region}
   let ob = {}
 
@@ -130,8 +130,8 @@ let drawLine = (linedata,ctx)=> {
       // update the data
     }
     ctx.closePath()
-    for (let i =0; i < csvData.length; i++) {
-      let activationValue = csvData[i]
+    for (let i =0; i < activationData.length; i++) {
+      let activationValue = activationData[i]
       // check to see if the data we have belongs in this region
       if ( linedata.region == csvRegionArray[i]) {
         // the min appears to be almost 0 and the max should come in around 0.006
@@ -168,7 +168,7 @@ let setup = (lwidth,paneHolder) => {
   return ob
 }
 
-let dataBind = (drawing,data_to_bind) => {
+let dataBind = (drawing,data_to_bind,activationData) => {
   // drawing has can and ctx attributes
   // find a way get to the data we need here
   let iter = 0  
@@ -181,18 +181,18 @@ let dataBind = (drawing,data_to_bind) => {
       region:data_to_bind.properties.regionName
     }
     console.log(data_to_bind.properties)
-    let line = drawLine(drawingData,drawing.ctx)
+    let line = drawLine(drawingData,drawing.ctx,activationData)
     line.draw()
     iter +=1
   }
 }
 
-let featurePass = (drawing,upperData) => {
+let featurePass = (drawing,upperData,activationData) => {
   let ob = {}
   ob.mapFeatures = () => {
     console.log("total features ",upperData.features.length)
   for (let feature of upperData.features) {
-    let db = dataBind(drawing,feature)
+    let db = dataBind(drawing,feature,activationData)
   }
   }
   return ob
@@ -286,16 +286,16 @@ let rangePrep = ()=> {
   return slicesByView
 }
 
-let sliceSelect = (paneHolder) => {
+let sliceSelect = (paneHolder,activationData) => {
   let ob = {}
   ob.createImage = (slice,drawing) =>  {
     drawing.ctx.clearRect(0,0,drawing.can.height,drawing.can.width)
     brain = sliceData[slice]
-    globalinfo = globals()
+    globalinfo = globals(activationData)
     drawing.resize(500*globalinfo.ratio,500,20)
     // data height vs width ration
     console.log(brain)
-    let allfeatures = featurePass(drawing,brain)
+    let allfeatures = featurePass(drawing,brain,activationData)
     allfeatures.mapFeatures()
     console.log(globalinfo)
     console.log(Math.floor(Math.random()*255))
@@ -329,7 +329,6 @@ let pane = (number)=> {
     ctrlDiv.className = "ctrlDiv"
     paneDiv.append(ctrlDiv)
     paneDiv.setAttribute("id",`paneholder${number}`)
-    paneDiv.style.setProperty("background","aliceblue")
     let mkradio = (view,radionum) => {
       let rad = document.createElement("input")
       rad.type = "radio"
@@ -351,7 +350,7 @@ let pane = (number)=> {
     mkradio("sagittal",number)
     mkradio("coronal",number)
     // setup file loader field
-    let csvloader = loader(ctrlDiv,paneDiv)
+    let csvloader = loader(ctrlDiv,paneDiv,number)
     csvloader.create()
 
     document.body.append(paneDiv)
@@ -360,10 +359,10 @@ let pane = (number)=> {
   return ob
 }
 
-let createCanvasDrawing = (ctrlDiv,canvasHolder)=>{
+let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
   let ob = {}
   ob.run =()=> {
-    let sliceSelection = sliceSelect(canvasHolder)
+    let sliceSelection = sliceSelect(canvasHolder,activationData)
     let range = document.createElement("input")
     range.type="range"
     ctrlDiv.append(range)
@@ -402,7 +401,7 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder)=>{
   return ob
 }
 
-let columnSelector = (data,holder,canvasHolder)=> {
+let columnSelector = (data,holder,canvasHolder,id)=> {
   let ob = {}
   ob.create = ()=> {
     let select = document.createElement("select")
@@ -415,17 +414,17 @@ let columnSelector = (data,holder,canvasHolder)=> {
     holder.append(select)
     select.onchange = ()=> {
       console.log("selected ",select.value)
-      csvData = data.data[select.value]
+      //csvData[id] = data.data[select.value]
       csvRegionArray = data.data["regionName"]
       // create the drawings from the slice data
-      let drawing = createCanvasDrawing(holder,canvasHolder)
+      let drawing = createCanvasDrawing(holder,canvasHolder,data.data[select.value])
       drawing.run()
     }
   }
   return ob 
 }
 
-let loader = (holder,canvasHolder)=> {
+let loader = (holder,canvasHolder,id)=> {
   let ob = {}
   // still a bit trigger happy
   ob.create = () => {
@@ -467,7 +466,7 @@ let loader = (holder,canvasHolder)=> {
         data.parse()
         console.log(data.data)
         // create a select option for the columns of the data now
-        let columnselector = columnSelector(data,holder,canvasHolder)
+        let columnselector = columnSelector(data,holder,canvasHolder,id)
         columnselector.create()
       })
 
