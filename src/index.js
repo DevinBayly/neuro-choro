@@ -1,11 +1,10 @@
-      
 import geodata from "./gz_2010_us_040_00_500k.json"
 import css from "./style.css"
 import sliceData from "./GeoJson_Brains/total.json"
-import csvData from "./WeaveTutorial/Tables/indiv_run_summary_pos_thresh_ice_perc_sum.csv"
 
 let brain
 let globalinfo
+let csvData
 
 
 let pointValues ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
@@ -81,7 +80,6 @@ let globals = (scanCol)=> {
     }
   }
   // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
-
   let scanScalar =interpolator()
   scanScalar.setup(ob.scanDatamin,0,ob.scanDatamax,1)
   ob.scanScalar = scanScalar
@@ -330,16 +328,6 @@ let pane = (number)=> {
     paneDiv.append(ctrlDiv)
     paneDiv.setAttribute("id",`paneholder${number}`)
     paneDiv.style.setProperty("background","aliceblue")
-    let range = document.createElement("input")
-    range.type="range"
-    ctrlDiv.append(range)
-    let drawing = setup(3,paneDiv)
-    drawing.begin()
-    let sliceSelection = sliceSelect(paneDiv)
-    let rangeData = rangePrep()
-    range.value = 20
-    // make the range slider tied to slice lookup
-    // start with sagittal
     let mkradio = (view,radionum) => {
       let rad = document.createElement("input")
       rad.type = "radio"
@@ -356,25 +344,49 @@ let pane = (number)=> {
       div.append(label)
       ctrlDiv.append(div)
     }
-    let selected = "sagittal"
-    let getRadioSelected = ()=> {
-      if (paneDiv.querySelector("#radiosagittal").checked) {
-        selected = "sagittal"
-      }
-      if (paneDiv.querySelector("#radiocoronal").checked) {
-        selected = "coronal"
-      }
-      if (paneDiv.querySelector("#radioaxial").checked) {
-        selected = "axial"
-
-      }
-    }
     // setup the radio buttons
     mkradio("axial",number)
     mkradio("sagittal",number)
     mkradio("coronal",number)
+    // setup file loader field
+    let csvloader = loader(ctrlDiv,paneDiv)
+    csvloader.create()
+
+    document.body.append(paneDiv)
+  }
+  // setup a div with a canvas inside of it
+  return ob
+}
+
+let createCanvasDrawing = (ctrlDiv,canvasHolder)=>{
+  let ob = {}
+  ob.run =()=> {
+    let sliceSelection = sliceSelect(canvasHolder)
+    let range = document.createElement("input")
+    range.type="range"
+    ctrlDiv.append(range)
+    let drawing = setup(3,canvasHolder)
+    drawing.begin()
+    // only run slice selection when we have data 
+    let rangeData = rangePrep()
+    range.value = 20
+    // make the range slider tied to slice lookup
+    // start with sagittal
+    let selected = "sagittal"
+    let getRadioSelected = ()=> {
+      if (canvasHolder.querySelector("#radiosagittal").checked) {
+        selected = "sagittal"
+      }
+      if (canvasHolder.querySelector("#radiocoronal").checked) {
+        selected = "coronal"
+      }
+      if (canvasHolder.querySelector("#radioaxial").checked) {
+        selected = "axial"
+
+      }
+    }
+    canvasHolder.querySelector("#radiosagittal").checked = true
     sliceSelection.createImage(rangeData[selected][5],drawing)
-    paneDiv.querySelector("#radiosagittal").checked = true
     range.oninput = ()=> {
       getRadioSelected()
       let ind = parseInt(range.value)
@@ -384,29 +396,31 @@ let pane = (number)=> {
       range.step = 1
       sliceSelection.createImage(name,drawing)
     }
-    // setup file loader field
-    let csvloader = loader(ctrlDiv)
-    csvloader.create()
-
-    document.body.append(paneDiv)
   }
-  // setup a div with a canvas inside of it
   return ob
 }
 
-let run = ()=> {
-  let inpt = document.querySelector("input")
-  let f
-  inpt.onchange =()=> {
-    f = inpt.files[0]
+let columnSelector = (data,holder,canvasHolder)=> {
+  let ob = {}
+  ob.create = ()=> {
+    let select = document.createElement("select")
+    for(let key of Object.keys(data.data)) {
+      let option = document.createElement("option")
+      option.value = key
+      option.innerHTML = key
+      select.append(option)
+    }
+    holder.append(select)
+    select.onchange = ()=> {
+      console.log("selected ",select.value)
+      // create the drawings from the slice data
+      createCanvasDrawing(holder,canvasHolder)
+    }
   }
-  let btn = document.querySelector("#bttn")
-}
-window.onload = ()=> {
-  run()
+  return ob 
 }
 
-let loader = (holder)=> {
+let loader = (holder,canvasHolder)=> {
   let ob = {}
   // still a bit trigger happy
   ob.create = () => {
@@ -442,7 +456,16 @@ let loader = (holder)=> {
           console.log(res)  
           return res.text()
         }
-      ).then(text=> console.log(text))
+      ).then(text=> {
+        console.log(text)
+        let data = csvDataReader(text)
+        data.parse()
+        console.log(data.data)
+        // create a select option for the columns of the data now
+        let columnselector = columnSelector(data,holder,canvasHolder)
+        columnselector.create()
+      })
+
       // trigger creation of column selection tool with the names from the first line, and pass this to the pane drawing tool
     })
     holder.append(input)
@@ -450,7 +473,28 @@ let loader = (holder)=> {
   }
   return ob
 }
-
+let csvDataReader = (csvRawString)=> {
+  let ob = {}
+  ob.parse= ()=> {
+    // !! think carefully about the types of errors that might come up here
+    // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
+    let lines  = csvRawString.split("\r")
+    let headers = lines[0].split(",")
+    ob.data = {}
+    headers.map(e=> {
+      ob.data[e] = []
+    })
+    // read through the rest of the lines and add them to the data
+    // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
+    for (let iLine = 1;iLine < lines.length;iLine++) {
+      let entries =  lines[iLine].split(",")
+      for (let i = 0; i < entries.length;i++) {
+        ob.data[headers[i]].push(entries[i])
+      }
+    }
+  }
+  return ob
+}
 
 let addButton = ()=> {
   let ob = {}
