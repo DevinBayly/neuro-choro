@@ -5,6 +5,7 @@ import sliceData from "./GeoJson_Brains/total.json"
 let brain
 let globalinfo
 let csvData
+let csvRegionArray
 
 
 let pointValues ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
@@ -72,11 +73,11 @@ let globals = (scanCol)=> {
   ob.scanDatamin =0
   ob.scanDatamax =0
   for (let row of csvData ) {
-    if (row[scanCol] > ob.scanDatamax) {
-      ob.scanDatamax = parseFloat(row[scanCol])
+    if (row > ob.scanDatamax) {
+      ob.scanDatamax = parseFloat(row)
     }
-    if (row[scanCol] < ob.scanDatamin) {
-      ob.scanDatamin = parseFloat(row[scanCol])
+    if (row < ob.scanDatamin) {
+      ob.scanDatamin = parseFloat(row)
     }
   }
   // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
@@ -129,12 +130,12 @@ let drawLine = (linedata,ctx)=> {
       // update the data
     }
     ctx.closePath()
-    ctx.stroke()
-    for (let row of csvData) {
-      // the important parts of the dataset are in column 0 and column 9
-      if ( linedata.region == row[0] ) {
+    for (let i =0; i < csvData.length; i++) {
+      let activationValue = csvData[i]
+      // check to see if the data we have belongs in this region
+      if ( linedata.region == csvRegionArray[i]) {
         // the min appears to be almost 0 and the max should come in around 0.006
-        let scanData = parseFloat(row[12])
+        let scanData = parseFloat(activationValue)
         if (! isNaN(scanData)) {
           let  t = globalinfo.scanScalar.calc(scanData)
           console.log(t)
@@ -146,6 +147,7 @@ let drawLine = (linedata,ctx)=> {
         break
       }
     }
+    ctx.stroke()
   }
   return ob
 }
@@ -289,13 +291,13 @@ let sliceSelect = (paneHolder) => {
   ob.createImage = (slice,drawing) =>  {
     drawing.ctx.clearRect(0,0,drawing.can.height,drawing.can.width)
     brain = sliceData[slice]
-    globalinfo = globals(9)
+    globalinfo = globals()
     drawing.resize(500*globalinfo.ratio,500,20)
     // data height vs width ration
     console.log(brain)
     let allfeatures = featurePass(drawing,brain)
     allfeatures.mapFeatures()
-    console.log(globals)
+    console.log(globalinfo)
     console.log(Math.floor(Math.random()*255))
     let getPos = (can,e) => {
       let rect = can.getBoundingClientRect()
@@ -413,8 +415,11 @@ let columnSelector = (data,holder,canvasHolder)=> {
     holder.append(select)
     select.onchange = ()=> {
       console.log("selected ",select.value)
+      csvData = data.data[select.value]
+      csvRegionArray = data.data["regionName"]
       // create the drawings from the slice data
-      createCanvasDrawing(holder,canvasHolder)
+      let drawing = createCanvasDrawing(holder,canvasHolder)
+      drawing.run()
     }
   }
   return ob 
@@ -511,8 +516,6 @@ let addButton = ()=> {
     btn.setAttribute("id","addbtn")
     btn.innerHTML = "Add Pane"
     document.body.append(btn)
-    btn.click()
-    btn.click()
 
   }
   return ob
