@@ -1,3 +1,4 @@
+      
 import geodata from "./gz_2010_us_040_00_500k.json"
 import css from "./style.css"
 import sliceData from "./GeoJson_Brains/total.json"
@@ -5,6 +6,8 @@ import csvData from "./WeaveTutorial/Tables/indiv_run_summary_pos_thresh_ice_per
 
 let brain
 let globalinfo
+
+
 let pointValues ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
 let parametricInterp = () => {
   let ob = {}
@@ -366,6 +369,7 @@ let pane = (number)=> {
 
       }
     }
+    // setup the radio buttons
     mkradio("axial",number)
     mkradio("sagittal",number)
     mkradio("coronal",number)
@@ -380,12 +384,74 @@ let pane = (number)=> {
       range.step = 1
       sliceSelection.createImage(name,drawing)
     }
-    // setup the radio buttons
+    // setup file loader field
+    let csvloader = loader(ctrlDiv)
+    csvloader.create()
+
     document.body.append(paneDiv)
   }
   // setup a div with a canvas inside of it
   return ob
 }
+
+let run = ()=> {
+  let inpt = document.querySelector("input")
+  let f
+  inpt.onchange =()=> {
+    f = inpt.files[0]
+  }
+  let btn = document.querySelector("#bttn")
+}
+window.onload = ()=> {
+  run()
+}
+
+let loader = (holder)=> {
+  let ob = {}
+  // still a bit trigger happy
+  ob.create = () => {
+    // make the form that uploads the data
+    let f
+    let input = document.createElement("input")
+    let button = document.createElement("button")
+    button.innerHTML = "Load CSV"
+    input.onchange =()=> {
+      f = input.files[0]
+    }
+    input.type = "file"
+    input.name ="fileupload"
+    input.accept = "text/csv"
+    button.addEventListener("click",()=> {
+      console.log("clc")
+      let xmlHttpRequest = new XMLHttpRequest();
+
+      let fileName = f.name
+      let target = "http://localhost:8080" //!! this will need to change when the site has a specific name
+      let mimeType = "text/csv"
+
+      fetch(target,{
+        method:"POST",
+        mode:"cors",
+        headers:{
+          "Content-type":"text/csv",
+          "Content-disposition":`attachment;filename=${fileName}`
+        },
+        body:f
+      }).then(
+        res=> {
+          console.log(res)  
+          return res.text()
+        }
+      ).then(text=> console.log(text))
+      // trigger creation of column selection tool with the names from the first line, and pass this to the pane drawing tool
+    })
+    holder.append(input)
+    holder.append(button)
+  }
+  return ob
+}
+
+
 let addButton = ()=> {
   let ob = {}
   ob.count = 0
