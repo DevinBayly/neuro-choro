@@ -1,0 +1,12 @@
+body {
+  display:inline-block;
+}
+.pane {
+  display:inline-block;
+}
+.ctrlDiv {
+  background:gray;
+}
+.radcontainer{
+  display:inline;
+}
