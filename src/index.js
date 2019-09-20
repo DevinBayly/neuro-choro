@@ -6,6 +6,7 @@ let brain
 let globalinfo
 let csvData = {}// organized by pane count ids
 let csvRegionArray
+let regionMap = {}  
 
 
 let pointValues ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
@@ -115,6 +116,8 @@ let drawLine = (linedata,ctx,activationData)=> {
     let first = linedata.points[0]
     let x = xinterp.calc(first[0])
     let y = yinterp.calc(first[1])
+    let xbounds = {min:x,max:x}
+    let ybounds = {min:y,max:y}
     let last = [x,y]
     // create gaplessEntry
     pointValues[linedata.region] =[[x,y]]
@@ -123,6 +126,18 @@ let drawLine = (linedata,ctx,activationData)=> {
       let pt = linedata.points[i]
       let x = xinterp.calc(pt[0])
       let y = yinterp.calc(pt[1])
+      if (xbounds.min > x) {
+        xbounds.min = x
+      }
+      if (xbounds.max < x) {
+        xbounds.max = x
+      }
+      if (ybounds.max < y) {
+        ybounds.max = y
+      }
+      if (ybounds.min > y) {
+        ybounds.min = y
+      }
       // do parametric interpolation of points between last x,y and the present one
       //
       pointValues[linedata.region].push([x,y])
@@ -148,6 +163,10 @@ let drawLine = (linedata,ctx,activationData)=> {
       }
     }
     ctx.stroke()
+    let fillString = `rgb(0,${Math.round(Math.random()*255)},${Math.round(Math.random()*255)})`
+    regionMap[fillString] = linedata.region
+    ctx.fillStyle = fillString
+    ctx.fillRect((xbounds.min + xbounds.max)/2,(ybounds.min+ ybounds.max)/2,5,5)
   }
   return ob
 }
@@ -317,9 +336,16 @@ let sliceSelect = (paneHolder,activationData) => {
       let x = e.clientX - rect.left
       let y = e.clientY - rect.top
       console.log("x: ",x, "y: ", y)
+      let ctx = can.getContext("2d")
       // activate the border point-in-polygon algorithm
-      let pip = pointInPoly(x,y,.05,drawing)
-      pip.iterRegions()
+      // get image data
+      let pix = ctx.getImageData(x,y,1,1).data
+      console.log(pix)
+      let colorString = `rgb(0,${pix[1]},${pix[2]})`
+      console.log(regionMap[colorString])
+      ctx.font = "13px serif"
+      ctx.strokeStyle = colorString
+      ctx.strokeText(regionMap[colorString],x+10,y+10)
     }
 
     drawing.can.addEventListener("click",(e)=> {
