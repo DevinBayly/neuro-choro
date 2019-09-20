@@ -258,6 +258,7 @@ let pointInPoly = (x,y,epsilon,drawing) => {
 
 let rangePrep = ()=> {
   // we will create and sort 3 element array of the data
+  let ob = {}
   let slicesByView = {
     "sagittal":[],
     "axial":[],
@@ -283,7 +284,19 @@ let rangePrep = ()=> {
   slicesByView.axial.sort(sortfunc)
   slicesByView.sagittal.sort(sortfunc)
   slicesByView.coronal.sort(sortfunc)
-  return slicesByView
+  ob.slices = slicesByView
+  // get the array of values
+  ob.measurements = {}
+  ob.measurements.axial =slicesByView.axial.map(sl => {
+    return (sl.match(/(-?\d+mm)?.json/)[1])
+  })
+  ob.measurements.sagittal =slicesByView.sagittal.map(sl => {
+    return (sl.match(/(-?\d+mm)?.json/)[1])
+  })
+  ob.measurements.coronal =slicesByView.coronal.map(sl => {
+    return (sl.match(/(-?\d+mm)?.json/)[1])
+  })
+  return ob
 }
 
 let sliceSelect = (paneHolder,activationData) => {
@@ -364,8 +377,12 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
   ob.run =()=> {
     let sliceSelection = sliceSelect(canvasHolder,activationData)
     let range = document.createElement("input")
+    let label = document.createElement("label")
+    range.name = "slicerange"
     range.type="range"
+    label.setAttribute("for","slicerange")
     ctrlDiv.append(range)
+    ctrlDiv.append(label)
     let drawing = setup(3,canvasHolder)
     drawing.begin()
     // only run slice selection when we have data 
@@ -387,13 +404,15 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
       }
     }
     canvasHolder.querySelector("#radiosagittal").checked = true
-    sliceSelection.createImage(rangeData[selected][5],drawing)
+    label.innerHTML = rangeData.measurements[selected][range.value]
+    sliceSelection.createImage(rangeData.slices[selected][5],drawing)
     range.oninput = ()=> {
       getRadioSelected()
       let ind = parseInt(range.value)
-      let name = rangeData[selected][ind]
+      let name = rangeData.slices[selected][ind]
+      label.innerHTML = rangeData.measurements[selected][range.value]
       range.min= 0
-      range.max = rangeData[selected].length-1
+      range.max = rangeData.slices[selected].length-1
       range.step = 1
       sliceSelection.createImage(name,drawing)
     }
