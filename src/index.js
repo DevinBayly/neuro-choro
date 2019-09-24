@@ -343,9 +343,12 @@ let sliceSelect = (paneHolder,activationData) => {
       console.log(pix)
       let colorString = `rgb(0,${pix[1]},${pix[2]})`
       console.log(regionMap[colorString])
+      if (regionMap[colorString] != undefined) {
       ctx.font = "13px serif"
       ctx.strokeStyle = colorString
+      ctx.lineWidth= 1
       ctx.strokeText(regionMap[colorString],x+10,y+10)
+      }
     }
 
     drawing.can.addEventListener("click",(e)=> {
