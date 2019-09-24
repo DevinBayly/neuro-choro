@@ -1,11 +1,9 @@
-import geodata from "./gz_2010_us_040_00_500k.json"
-import css from "./style.css"
-import sliceData from "./GeoJson_Brains/total.json"
 
 let brain
 let globalinfo
 let csvData = {}// organized by pane count ids
 let csvRegionArray
+let sliceData
 let regionMap = {}  
 
 
@@ -192,11 +190,11 @@ let dataBind = (drawing,data_to_bind,activationData) => {
   // find a way get to the data we need here
   let iter = 0  
   console.log("number of total coordinates ",data_to_bind.geometry.coordinates.length)
-  for (line of data_to_bind.geometry.coordinates) {
+  for (let pline of data_to_bind.geometry.coordinates) {
     //let data_bound = {coords:line,properties
     //make copy of line data and bind in the region name
     let drawingData = {
-      points:line,
+      points:pline,
       region:data_to_bind.properties.regionName
     }
     console.log(data_to_bind.properties)
@@ -568,8 +566,10 @@ let addButton = ()=> {
   return ob
 }
 
-
-let btn1 = addButton()
-btn1.create()
-
-
+async function Run() {
+  let res = await fetch("http://localhost:8080/src/GeoJson_Brains/total.json")
+  sliceData = await res.json()
+  let btn1 = addButton()
+  btn1.create()
+}
+Run()
