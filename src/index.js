@@ -143,12 +143,16 @@ let drawLine = (linedata,ctx,activationData)=> {
       // update the data
     }
     ctx.closePath()
+    let fillString = `rgb(0,${Math.round(Math.random()*255)},${Math.round(Math.random()*255)})`
+    regionMap[fillString] = {name:linedata.region}
     for (let i =0; i < activationData.length; i++) {
       let activationValue = activationData[i]
       // check to see if the data we have belongs in this region
       if ( linedata.region == csvRegionArray[i]) {
         // the min appears to be almost 0 and the max should come in around 0.006
         let scanData = parseFloat(activationValue)
+        // add the float value to the region map
+        regionMap[fillString].activation = scanData
         if (! isNaN(scanData)) {
           let  t = globalinfo.scanScalar.calc(scanData)
           console.log(t)
@@ -160,11 +164,9 @@ let drawLine = (linedata,ctx,activationData)=> {
         break
       }
     }
-    ctx.stroke()
-    let fillString = `rgb(0,${Math.round(Math.random()*255)},${Math.round(Math.random()*255)})`
-    regionMap[fillString] = linedata.region
     ctx.fillStyle = fillString
     ctx.fillRect((xbounds.min + xbounds.max)/2,(ybounds.min+ ybounds.max)/2,5,5)
+    ctx.stroke()
   }
   return ob
 }
@@ -342,16 +344,33 @@ let sliceSelect = (paneHolder,activationData) => {
       let colorString = `rgb(0,${pix[1]},${pix[2]})`
       console.log(regionMap[colorString])
       if (regionMap[colorString] != undefined) {
-      ctx.font = "13px serif"
-      ctx.strokeStyle = colorString
-      ctx.lineWidth= 1
-      ctx.strokeText(regionMap[colorString],x+10,y+10)
+        // make a little side box with the info in it
+        // take away a chunk of the image at that area
+        let rightDiv = document.createElement("div")
+        rightDiv.id = "tooltip"
+        rightDiv.innerHTML = `
+<h3>Selected Region
+  <p class="tooltip-child">
+        ${ regionMap[colorString].name }
+  </p>
+  <p class="tooltip-child">
+activity value: ${regionMap[colorString].activation}
+  </p>
+</h3>
+`
+        //append to canvas element if possible
+        paneHolder.append(rightDiv)
+        setTimeout(()=>{
+          // replace the original pixels
+          rightDiv.remove()
+        },3500)
       }
     }
-
-    drawing.can.addEventListener("click",(e)=> {
+    let callGetPos = (e)=> {
       getPos(drawing.can,e)
-    })
+    }
+    drawing.can.removeEventListener("click",callGetPos)
+    drawing.can.addEventListener("click",callGetPos)
 
   }
   return ob
