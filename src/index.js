@@ -165,7 +165,7 @@ let drawLine = (linedata,ctx,activationData)=> {
       }
     }
     ctx.fillStyle = fillString
-    ctx.fillRect((xbounds.min + xbounds.max)/2,(ybounds.min+ ybounds.max)/2,5,5)
+    ctx.fillRect((xbounds.min + xbounds.max)/2,(ybounds.min+ ybounds.max)/2,10,10)
     ctx.stroke()
   }
   return ob
@@ -392,10 +392,42 @@ let pane = (number)=> {
     // want radio w 3 buttons, range slider, selection form for loading
     let paneDiv = document.createElement("div")
     paneDiv.className = "pane"
+    paneDiv.setAttribute("id",`paneholder${number}`)
     let ctrlDiv = document.createElement("div")
     ctrlDiv.className = "ctrlDiv"
+    // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
+    let moverDiv = document.createElement("div")
+    // create the mouse up,down and move events for dragging the panes around
+    let mouseMovePane = (e)=> {
+      let topVal = e.clientY
+      let leftVal = e.clientX
+      paneDiv.style.top = `${topVal}px`
+      paneDiv.style.left = `${leftVal}px`
+    }
+    let mouseIsDown = false
+    let mouseDown = (e)=> {
+      mouseIsDown = true
+      // make the holder position absolute
+      paneDiv.style.position = "absolute"
+      // move to the position that the mouse is at
+      let topVal = e.clientY
+      let leftVal = e.clientX
+      paneDiv.style.top = `${topVal}px`
+      paneDiv.style.left = `${leftVal}px`
+      // add the move event
+      document.body.addEventListener("mousemove",mouseMovePane)
+    }
+    moverDiv.addEventListener("mousedown",mouseDown)
+    let mouseUp = (e)=> {
+      // remove the move listener 
+      if (mouseIsDown) {
+        document.body.removeEventListener("mousemove",mouseMovePane)
+      }
+    }
+    document.body.addEventListener("mouseup",mouseUp)
+    moverDiv.className = "panemover"
+    ctrlDiv.append(moverDiv)
     paneDiv.append(ctrlDiv)
-    paneDiv.setAttribute("id",`paneholder${number}`)
     let mkradio = (view,radionum) => {
       let rad = document.createElement("input")
       rad.type = "radio"
@@ -577,6 +609,8 @@ let addButton = ()=> {
   let ob = {}
   ob.count = 0
   ob.create = ()=> {
+    let btndiv = document.createElement("div")
+    btndiv.id = "btnholder"
     let btn = document.createElement("button")
     btn.onclick = ()=> {
       // create a pane
@@ -587,7 +621,8 @@ let addButton = ()=> {
     }
     btn.setAttribute("id","addbtn")
     btn.innerHTML = "Add Pane"
-    document.body.append(btn)
+    btndiv.append(btn)
+    document.body.append(btndiv)
 
   }
   return ob
