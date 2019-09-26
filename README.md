@@ -14,4 +14,4 @@ This repository contains the development of a research imaging tool allowing res
 
 ## Better Setup
 
-Navigate to this link http://129.114.17.151:8080/dist/. Presently doesn't want to accept files because of cross origin fetching issues, but that is going to be worked on shortly!
+Navigate to this link http://129.114.17.151:8080/. Presently doesn't want to accept files because of cross origin fetching issues, but that is going to be worked on shortly!
