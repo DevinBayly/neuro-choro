@@ -366,11 +366,16 @@ activity value: ${regionMap[colorString].activation}
         },3500)
       }
     }
-    let callGetPos = (e)=> {
-      getPos(drawing.can,e)
+    if (drawing.posFunc == undefined) {
+      let callGetPos = (e)=> {
+        getPos(drawing.can,e)
+      }
+      drawing.posFunc = callGetPos
+      // store function once so that adding and removing is possible
+    } else {
+      drawing.can.removeEventListener("click",drawing.posFunc)
     }
-    drawing.can.removeEventListener("click",callGetPos)
-    drawing.can.addEventListener("click",callGetPos)
+    drawing.can.addEventListener("click",drawing.posFunc)
 
   }
   return ob
