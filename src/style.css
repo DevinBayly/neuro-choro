@@ -1,8 +1,9 @@
 body {
-  display:inline-block;
+  height:100vw;
 }
 .pane {
-  display:inline-block;
+  width:30%;
+  margin:0 auto;
 }
 .ctrlDiv {
   background:gray;
@@ -18,4 +19,28 @@ body {
 }
 .innerholder {
   display:flex;
+}
+.panemover {
+    width: 50px;
+    background: blue;
+    display: inline-block;
+    height: 50px;
+    position: relative;
+}
+#btnholder {
+
+    width: 50%;
+    margin: 0 auto;
+    display: flex;
+    width: 100%;
+    justify-items: center;
+    justify-content: center;
+    height: 50px;
+
+}
+#addbtn {
+
+    width: 20%;
+    height: 100%;
+
 }
