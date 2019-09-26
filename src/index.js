@@ -397,6 +397,13 @@ let pane = (number)=> {
     ctrlDiv.className = "ctrlDiv"
     // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
     let moverDiv = document.createElement("div")
+    let moveIcon = new Image()
+    moveIcon.src = "./src/moveicon.svg"
+    moveIcon.onload = ()=> {
+      // append to the moverDiv
+      // resize probably
+      moverDiv.append(moveIcon)
+    }
     // create the mouse up,down and move events for dragging the panes around
     let mouseMovePane = (e)=> {
       let topVal = e.clientY
@@ -462,13 +469,21 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
   let ob = {}
   ob.run =()=> {
     let sliceSelection = sliceSelect(canvasHolder,activationData)
+    //delete previous range slider 
     let range = document.createElement("input")
+    range.id = "rangeslider"
     let label = document.createElement("label")
+    label.id = "rangesliderlabel"
     range.name = "slicerange"
     range.type="range"
     label.setAttribute("for","slicerange")
     ctrlDiv.append(range)
     ctrlDiv.append(label)
+    // check for existing canvas, delete if found
+    let prevCan = canvasHolder.querySelector("canvas")
+    if (prevCan) {
+      prevCan.remove()
+    }
     let drawing = setup(3,canvasHolder)
     drawing.begin()
     // only run slice selection when we have data 
@@ -570,6 +585,19 @@ let loader = (holder,canvasHolder,id)=> {
         let data = csvDataReader(text)
         data.parse()
         console.log(data.data)
+        // delete the previous column selector
+        let prevSelect = canvasHolder.querySelector("select")
+        if (prevSelect) {
+          prevSelect.remove()
+        }
+        let prevRange = canvasHolder.querySelector("#rangeslider")
+        if (prevRange) {
+          prevRange.remove()
+        }
+        let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
+        if (prevLabel) {
+          prevLabel.remove()
+        }
         // create a select option for the columns of the data now
         let columnselector = columnSelector(data,holder,canvasHolder,id)
         columnselector.create()

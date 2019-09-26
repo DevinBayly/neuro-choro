@@ -1,5 +1,6 @@
 body {
   height:100vw;
+  font-size:1.5vh;
 }
 .pane {
   width:30%;
@@ -21,11 +22,12 @@ body {
   display:flex;
 }
 .panemover {
-    width: 50px;
-    background: blue;
+    background: #cacaf0;
     display: inline-block;
-    height: 50px;
     position: relative;
+}
+.panemover img {
+  width:20%;
 }
 #btnholder {
 
@@ -35,7 +37,7 @@ body {
     width: 100%;
     justify-items: center;
     justify-content: center;
-    height: 50px;
+    height: 4.0vh;
 
 }
 #addbtn {
@@ -43,4 +45,13 @@ body {
     width: 20%;
     height: 100%;
 
+}
+select {
+  font-size:1.5vh;
+}
+input {
+  font-size:1.5vh;
+}
+button {
+  font-size:1.5vh;
 }
