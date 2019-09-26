@@ -173,9 +173,13 @@ let drawLine = (linedata,ctx,activationData)=> {
 
 let setup = (lwidth,paneHolder) => {
   let ob = {}
+  ob.outerHolder = paneHolder
   ob.begin = () => {
     let can = document.createElement("canvas")
-    paneHolder.append(can)
+    ob.innerHolder = document.createElement("div")
+    ob.innerHolder.className = "innerholder"
+    ob.innerHolder.append(can)
+    paneHolder.append(ob.innerHolder)
     ob.can = can
     ob.ctx = can.getContext("2d")
   }
@@ -359,7 +363,7 @@ activity value: ${regionMap[colorString].activation}
 </h3>
 `
         //append to canvas element if possible
-        paneHolder.append(rightDiv)
+        drawing.innerHolder.append(rightDiv)
         setTimeout(()=>{
           // replace the original pixels
           rightDiv.remove()
@@ -376,7 +380,6 @@ activity value: ${regionMap[colorString].activation}
       drawing.can.removeEventListener("click",drawing.posFunc)
     }
     drawing.can.addEventListener("click",drawing.posFunc)
-
   }
   return ob
 }

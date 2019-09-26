@@ -10,3 +10,12 @@ body {
 .radcontainer{
   display:inline;
 }
+#tooltip {
+  display:inline-block;
+  text-align:center;
+  margin:auto 0;
+  width:25%;
+}
+.innerholder {
+  display:flex;
+}
