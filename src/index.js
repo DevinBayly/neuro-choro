@@ -289,14 +289,14 @@ let rangePrep = ()=> {
   }
   for (let n in sliceData) {
     if (n.search(/cor/) == 0) {
-      slicesByView["sagittal"].push(n)
+      slicesByView["coronal"].push(n)
     }
     if (n.search(/sag/) == 0) {
-      slicesByView["axial"].push(n)
+      slicesByView["sagittal"].push(n)
     }
     if (n.search(/ax/) == 0) {
 
-      slicesByView["coronal"].push(n)
+      slicesByView["axial"].push(n)
     }
   }
   let sortfunc = (x,y) => {
