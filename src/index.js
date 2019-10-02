@@ -473,6 +473,29 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter)=>
       range.step = 1
       sliceSelection.createImage(name,drawing,activationData)
     }
+    // add events to the filter attached so it redraws canvas also
+    //
+    activityfilter.maxele.oninput = ()=> {
+      // update the max and max
+      activityfilter.max = activityfilter.maxele.valueAsNumber
+      // ensure that themin's max gets updated
+      activityfilter.minele.setAttribute("max",activityfilter.max)
+      activationData = activityfilter.filter()
+      getRadioSelected()
+      let ind = parseInt(range.value)
+      let name = rangeData.slices[selected][ind]
+      sliceSelection.createImage(name,drawing,activationData)
+    }
+    activityfilter.minele.oninput = ()=> {
+      // update the min and max
+      activityfilter.min = activityfilter.minele.valueAsNumber
+      activityfilter.maxele.setAttribute("min",activityfilter.min)
+      activationData = activityfilter.filter()
+      getRadioSelected()
+      let ind = parseInt(range.value)
+      let name = rangeData.slices[selected][ind]
+      sliceSelection.createImage(name,drawing,activationData)
+    }
   }
   return ob
 }
@@ -500,22 +523,11 @@ let activityFilter = (holder)=> {
     filterSlidermax.type = "range"
     // should make the max and max be global max and max with step enough for 100 increments or so
     filterSlidermax.id="activityfilterslidermax"
-    filterSlidermax.oninput = ()=> {
-      // update the max and max
-      ob.max = filterSlidermax.valueAsNumber
-      // ensure that themin's max gets updated
-      ob.minele.setAttribute("max",ob.max)
-    }
     ob.maxele = filterSlidermax
     let filterSlidermin = document.createElement("input")
     // should make the min and max be global min and max with step enough for 100 increments or so
     filterSlidermin.type = "range"
     filterSlidermin.id="activityfilterslidermin"
-    filterSlidermin.oninput = ()=> {
-      // update the min and max
-      ob.min = filterSlidermin.valueAsNumber
-      ob.maxele.setAttribute("min",ob.min)
-    }
     ob.minele = filterSlidermin
     holder.append(filterSlidermin)
     holder.append(filterSlidermax)
