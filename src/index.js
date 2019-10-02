@@ -90,7 +90,6 @@ let globals = (activationData)=> {
 let drawLine = (linedata,ctx,activationData)=> {
   //linedata  = {points,region}
   let ob = {}
-
   // need canvas ref
   //create interpolator
   //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
@@ -160,7 +159,6 @@ let drawLine = (linedata,ctx,activationData)=> {
           ctx.fillStyle=lerpc
           ctx.fill()
         }
-
         break
       }
     }
@@ -228,57 +226,6 @@ let featurePass = (drawing,upperData,activationData) => {
 //  coordinates is an array of 
 //
 // aim for as much functional as possible
-
-let pointInPoly = (x,y,epsilon,drawing) => {
-  let ob = {}
-  // interpolate
-  ob.checkinside = (regionData) => {
-    // this compares a current region to the existing x,y
-    // calculate the line from the far left to the point
-    // probably need an epsilon for the comparison between horizontal and region points because they might not always equal
-    // in each region just count the values that are close to that y value, and then print them plus the x, y
-    let hits = [] 
-    // interpolate, but 
-    let within = false
-    for (let i = 0; i < regionData.length-1;i++) {
-      // perform step interpolation 
-      let subdata = parametricInterp()
-      let xprev = regionData[i][0]
-      let yprev = regionData[i][1]
-      let xnext = regionData[i+1][0]
-      let ynext = regionData[i+1][1]
-      for (let pt of subdata.setupRun(xprev,yprev,xnext,ynext,.1)) {
-        if (Math.abs(y - pt[1]) < epsilon && x > pt[0]) {
-          hits.push(pt)
-          console.log(y,Math.abs(y - pt[1]), x, pt[0])
-          within = ! within
-        }
-      }
-    }
-    if (within) {
-      console.log(hits)
-    }
-    // now go through the hits and only take the ones that are less than the x
-    return within
-  }
-  ob.iterRegions = () => {
-    // the regions data is technically the brain.features, so we iter over the regionss in the same way as drawing them
-    for (let region in pointValues ) {
-      // now geometry and coordinates, check for within is true, and end there if so
-      // changing the datatype getting used
-      let rdat = pointValues[region]
-      let within = ob.checkinside(rdat)
-      console.log("investigating ",region)
-      if (within) {
-        console.log("yes")
-        // create a little info blob at the cursor on the canvas with the region data and the activation amounts
-        break
-      }
-    }
-  }
-  return ob
-}
-
 let rangePrep = ()=> {
   // we will create and sort 3 element array of the data
   let ob = {}
@@ -295,7 +242,6 @@ let rangePrep = ()=> {
       slicesByView["sagittal"].push(n)
     }
     if (n.search(/ax/) == 0) {
-
       slicesByView["axial"].push(n)
     }
   }
@@ -322,9 +268,9 @@ let rangePrep = ()=> {
   return ob
 }
 
-let sliceSelect = (paneHolder,activationData) => {
+let sliceSelect = (paneHolder) => {
   let ob = {}
-  ob.createImage = (slice,drawing) =>  {
+  ob.createImage = (slice,drawing,activationData) =>  {
     drawing.ctx.clearRect(0,0,drawing.can.height,drawing.can.width)
     brain = sliceData[slice]
     globalinfo = globals(activationData)
@@ -396,6 +342,7 @@ let pane = (number)=> {
     let ctrlDiv = document.createElement("div")
     ctrlDiv.className = "ctrlDiv"
     // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
+
     let moverDiv = document.createElement("div")
     let moveIcon = new Image()
     moveIcon.src = "./src/moveicon.svg"
@@ -465,10 +412,11 @@ let pane = (number)=> {
   return ob
 }
 
-let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
+let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter)=>{
   let ob = {}
   ob.run =()=> {
-    let sliceSelection = sliceSelect(canvasHolder,activationData)
+
+    let sliceSelection = sliceSelect(canvasHolder)
     //delete previous range slider 
     let range = document.createElement("input")
     range.id = "rangeslider"
@@ -506,8 +454,16 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
     }
     canvasHolder.querySelector("#radiosagittal").checked = true
     label.innerHTML = rangeData.measurements[selected][range.value]
-    sliceSelection.createImage(rangeData.slices[selected][5],drawing)
+    sliceSelection.createImage(rangeData.slices[selected][5],drawing,activationData)
+    // set these for first time
+    activityfilter.max = globalinfo.scanDatamax
+    activityfilter.min = globalinfo.scanDatamin
+    // update filter bars
+    activityfilter.update()
     range.oninput = ()=> {
+      // call the filter on the activation data, and pass to create image
+        // set max and min to global min max
+      activationData = activityfilter.filter()
       getRadioSelected()
       let ind = parseInt(range.value)
       let name = rangeData.slices[selected][ind]
@@ -515,31 +471,93 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData)=>{
       range.min= 0
       range.max = rangeData.slices[selected].length-1
       range.step = 1
-      sliceSelection.createImage(name,drawing)
+      sliceSelection.createImage(name,drawing,activationData)
     }
   }
   return ob
 }
 
-let columnSelector = (data,holder,canvasHolder,id)=> {
+let activityFilter = (holder)=> {
+  let ob = {}
+  ob.min = undefined
+  ob.max = undefined
+  ob.update = () => {
+    //update the range sliders
+    ob.maxele.setAttribute("max",`${globalinfo.scanDatamax}`)
+    ob.maxele.setAttribute("min",`${ob.min}`) // prevents mins from being greater than maxs
+    ob.maxele.setAttribute("step",`${ob.max/1000}`)// 1000 steps? 
+    ob.minele.setAttribute("max",`${ob.max}`)
+    ob.minele.setAttribute("min",`${globalinfo.scanDatamin}`)
+    ob.minele.setAttribute("step",`${ob.max/1000}`)
+  }
+  ob.addData = (data) => {
+    ob.data = data
+  }
+  ob.create =() => {
+    // make a range slider that updates the self filter function which is called later on activity data
+    // TODO add labels to the sliders
+    let filterSlidermax = document.createElement("input")
+    filterSlidermax.type = "range"
+    // should make the max and max be global max and max with step enough for 100 increments or so
+    filterSlidermax.id="activityfilterslidermax"
+    filterSlidermax.oninput = ()=> {
+      // update the max and max
+      ob.max = filterSlidermax.valueAsNumber
+      // ensure that themin's max gets updated
+      ob.minele.setAttribute("max",ob.max)
+    }
+    ob.maxele = filterSlidermax
+    let filterSlidermin = document.createElement("input")
+    // should make the min and max be global min and max with step enough for 100 increments or so
+    filterSlidermin.type = "range"
+    filterSlidermin.id="activityfilterslidermin"
+    filterSlidermin.oninput = ()=> {
+      // update the min and max
+      ob.min = filterSlidermin.valueAsNumber
+      ob.maxele.setAttribute("min",ob.min)
+    }
+    ob.minele = filterSlidermin
+    holder.append(filterSlidermin)
+    holder.append(filterSlidermax)
+  }
+  ob.filter = () =>{
+    return ob.data.map(e=> {
+      if(e > ob.min && e < ob.max) {
+        return e
+      }
+      return NaN
+    })
+  }
+  return ob
+}
+
+let selectorCreators = (data,holder,canvasHolder,id)=> {
   let ob = {}
   ob.create = ()=> {
-    let select = document.createElement("select")
+    // create the activity selector
+    let activitySelect = document.createElement("select")
     for(let key of Object.keys(data.data)) {
       let option = document.createElement("option")
       option.value = key
       option.innerHTML = key
-      select.append(option)
+      activitySelect.append(option)
     }
-    holder.append(select)
-    select.onchange = ()=> {
-      console.log("selected ",select.value)
-      //csvData[id] = data.data[select.value]
+    holder.append(activitySelect)
+    //create the activity filterselector
+    let filter = activityFilter(holder)
+    filter.create()
+    activitySelect.onchange = ()=> {
+      console.log("selected ",activitySelect.value)
+      //csvData[id] = data.data[activitySelect.value]
       csvRegionArray = data.data["regionName"]
       // create the drawings from the slice data
-      let drawing = createCanvasDrawing(holder,canvasHolder,data.data[select.value])
+      // parse the data into numeric
+      let numericData =data.data[activitySelect.value].map(e=> parseFloat(e))
+      filter.addData(numericData)
+      let drawing = createCanvasDrawing(holder,canvasHolder,numericData,filter)
       drawing.run()
     }
+
   }
   return ob 
 }
@@ -599,8 +617,8 @@ let loader = (holder,canvasHolder,id)=> {
           prevLabel.remove()
         }
         // create a select option for the columns of the data now
-        let columnselector = columnSelector(data,holder,canvasHolder,id)
-        columnselector.create()
+        let selectors = selectorCreators(data,holder,canvasHolder,id)
+        selectors.create()
       })
 
       // trigger creation of column selection tool with the names from the first line, and pass this to the pane drawing tool
