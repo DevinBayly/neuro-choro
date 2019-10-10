@@ -402,7 +402,7 @@ let pane = (number)=> {
   return ob
 }
 
-let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter)=>{
+let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter,categoricalFilters)=>{
   let ob = {}
   ob.run =()=> {
 
@@ -454,6 +454,10 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter)=>
       // call the filter on the activation data, and pass to create image
         // set max and min to global min max
       activationData = activityfilter.filter()
+      // check for categorical filters, step through the list of the filter holder and apply the filter functions of each to the activation data
+      categoricalFilters.filtersList.map(catfilter=> {
+        activationData = catfilter.filter(activationData)
+      })
       getRadioSelected()
       let ind = parseInt(range.value)
       let name = rangeData.slices[selected][ind]
@@ -571,9 +575,48 @@ let altColumnFilter = ()=> {
       option.value = op
       option.innerHTML = op
     }
-    ob.holder.append(ob.catSelect)
     // include the == and != buttons
-    
+    ob.operation = document.createElement("select")
+    let equals = document.createElement("option")
+    equals.innerHTML = "=="
+    equals.value = "=="
+    let notEquals = document.createElement("option")
+    notEquals.innerHTML = "!="
+    notEquals.value = "!="
+    ob.operation.append(equals)
+    ob.operation.append(notEquals)
+    ob.holder.append(ob.operation)
+    ob.holder.append(ob.catSelect)
+    // add event triggered on catSelect that updates what values the filter reduce uses
+    // return a boolean array 0 1s to pair with the final filter call
+    let mask =()=> {
+      ob.boolMask = colData.map(e=> {
+      if (ob.operation.value == "==") {
+        if (e == ob.catSelect.value) {
+          return 1
+        }
+        return 0
+      }
+      if (ob.operation.value == "!=") {
+        if (e != ob.catSelect.value) {
+          return 1
+        }
+        return 0
+      }
+    })
+    }
+    mask()
+    ob.operation.onchange = mask
+    ob.catSelect.onchange = mask
+  }
+  ob.filter =(activityData) => {
+    // apply the boolmask to the data and zero/NaN out the elements that don't fit the cat
+    return activityData.map((e,i)=> {
+      if (ob.boolMask[i]) {
+        return e
+      }
+      return NaN
+    })
   }
 
   // create filter options for numerical
@@ -585,18 +628,20 @@ let altColumnFilter = ()=> {
     ob.holder = holder
     ob.colSelect = document.createElement("select")
     ob.colSelect.onchange = ()=> {
-      let columnData = data.data[ob.colSelect.value]
+      // delete the previous items
+      if (ob.operation) {
+        ob.operation.remove()
+        ob.catSelect.remove()
+      }
+      ob.columnData = data.data[ob.colSelect.value]
       // hope its longer than 1 element
-      if (isNaN(parseFloat(columnData[0]))) {
+      if (isNaN(parseFloat(ob.columnData[0]))) {
         // do the categorical 
-        ob.createCategorical(columnData)
+        ob.createCategorical(ob.columnData)
       } else {
         // setup for numerical
-
+        ob.createNumerical(ob.columnData)
       }
-      // trigger the loading of the columns data, using the
-      // test the data for kind of filter options allowed
-      // load the elements necessary
     }
     // put the options in to the select
     for(let key of Object.keys(data.data)) {
@@ -619,7 +664,7 @@ let altColumnFilterHolder = ()=> {
     //  data
     ob.data = data
     //  non-activity column filters
-    ob.holders =[]
+    ob.filtersList =[]
     // put in the space next to the canvas
     let filterDiv = document.createElement("div")
     holder.append(filterDiv)
@@ -630,14 +675,12 @@ let altColumnFilterHolder = ()=> {
       // append it to the holders
       let columnfilter = altColumnFilter()
       columnfilter.create(filterDiv,ob.data)
+      ob.filtersList.push(columnfilter)
     })
     holder.append(createFilterButton)
   }
   // run categorical filters on the object's data
   // pass that data to the drawing tool so that it doesn't have to re filter every single time the other aspects of the program get used
-  ob.addHolder = (h)=> {
-    ob.holders.push(h)
-  }
   return ob
 }
 
@@ -668,7 +711,7 @@ let selectorCreators = (data,holder,canvasHolder,id)=> {
       // parse the data into numeric
       let numericData =data.data[activitySelect.value].map(e=> parseFloat(e))
       filter.addData(numericData)
-      let drawing = createCanvasDrawing(holder,canvasHolder,numericData,filter)
+      let drawing = createCanvasDrawing(holder,canvasHolder,numericData,filter,catFilter)
       drawing.run()
     }
 
