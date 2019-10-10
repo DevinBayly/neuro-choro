@@ -10,7 +10,7 @@ This repository contains the development of a research imaging tool allowing res
 * Navigate to localhost:8080
 
 **most recent**
-![](most_recent.png)
+![](trimmed_recent.png)
 **older**
 ![](updated.png)
 ![](test.png)
