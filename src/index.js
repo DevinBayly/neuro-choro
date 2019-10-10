@@ -154,7 +154,6 @@ let drawLine = (linedata,ctx,activationData)=> {
         regionMap[fillString].activation = scanData
         if (! isNaN(scanData)) {
           let  t = globalinfo.scanScalar.calc(scanData)
-          console.log(t)
           let lerpc = LerpCol(yellow,red,t)
           ctx.fillStyle=lerpc
           ctx.fill()
@@ -193,7 +192,6 @@ let dataBind = (drawing,data_to_bind,activationData) => {
   // drawing has can and ctx attributes
   // find a way get to the data we need here
   let iter = 0  
-  console.log("number of total coordinates ",data_to_bind.geometry.coordinates.length)
   for (let pline of data_to_bind.geometry.coordinates) {
     //let data_bound = {coords:line,properties
     //make copy of line data and bind in the region name
@@ -201,7 +199,6 @@ let dataBind = (drawing,data_to_bind,activationData) => {
       points:pline,
       region:data_to_bind.properties.regionName
     }
-    console.log(data_to_bind.properties)
     let line = drawLine(drawingData,drawing.ctx,activationData)
     line.draw()
     iter +=1
@@ -211,7 +208,6 @@ let dataBind = (drawing,data_to_bind,activationData) => {
 let featurePass = (drawing,upperData,activationData) => {
   let ob = {}
   ob.mapFeatures = () => {
-    console.log("total features ",upperData.features.length)
   for (let feature of upperData.features) {
     let db = dataBind(drawing,feature,activationData)
   }
@@ -276,23 +272,17 @@ let sliceSelect = (paneHolder) => {
     globalinfo = globals(activationData)
     drawing.resize(500*globalinfo.ratio,500,20)
     // data height vs width ration
-    console.log(brain)
     let allfeatures = featurePass(drawing,brain,activationData)
     allfeatures.mapFeatures()
-    console.log(globalinfo)
-    console.log(Math.floor(Math.random()*255))
     let getPos = (can,e) => {
       let rect = can.getBoundingClientRect()
       let x = e.clientX - rect.left
       let y = e.clientY - rect.top
-      console.log("x: ",x, "y: ", y)
       let ctx = can.getContext("2d")
       // activate the border point-in-polygon algorithm
       // get image data
       let pix = ctx.getImageData(x,y,1,1).data
-      console.log(pix)
       let colorString = `rgb(0,${pix[1]},${pix[2]})`
-      console.log(regionMap[colorString])
       if (regionMap[colorString] != undefined) {
         // make a little side box with the info in it
         // take away a chunk of the image at that area
@@ -499,6 +489,19 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter)=>
   }
   return ob
 }
+// perhaps create a collection of columns filter that can give you the results of your data
+// this is a filter that can work on other columns
+
+let sepColumnFilter = (holder)=> {
+  let ob = {}
+  ob.create =()=> {
+    // borrow the column selector and create another one here
+    // have an operations bar for = or != bool on the string data
+    // and > < for the data that is numeric or parsable
+    // ?? did we decide that there was going to be anything like 
+  }
+  return ob
+}
 
 let activityFilter = (holder)=> {
   let ob = {}
@@ -543,10 +546,110 @@ let activityFilter = (holder)=> {
   return ob
 }
 
+// the categorical filter option
+// ?? when should I pass in the data for this??
+let altColumnFilter = ()=> {
+  let ob ={}
+  ob.setcoldata = (data) => {
+    ob.coldata = data
+  }
+  // create filter option for categorical
+  //    find unique ids in column
+  //    add selection element that has the unique ids and then a == or != thing
+  ob.createCategorical = (colData)=> {
+    let uniqueSet = []
+    for (let element of colData) {
+      if (uniqueSet.indexOf(element) == -1) {
+        uniqueSet.push(element)
+      }
+    }
+    // create a select and drop down with the options
+    ob.catSelect = document.createElement("select")
+    for (let op of uniqueSet) {
+      let option = document.createElement("option")
+      ob.catSelect.append(option)
+      option.value = op
+      option.innerHTML = op
+    }
+    ob.holder.append(ob.catSelect)
+    // include the == and != buttons
+    
+  }
+
+  // create filter options for numerical
+  //    add range sliders
+
+  // call filter and return the data
+  ob.create = (holder,data)=> {
+    // select bar createdadd options to it attach a selection changed event to it
+    ob.holder = holder
+    ob.colSelect = document.createElement("select")
+    ob.colSelect.onchange = ()=> {
+      let columnData = data.data[ob.colSelect.value]
+      // hope its longer than 1 element
+      if (isNaN(parseFloat(columnData[0]))) {
+        // do the categorical 
+        ob.createCategorical(columnData)
+      } else {
+        // setup for numerical
+
+      }
+      // trigger the loading of the columns data, using the
+      // test the data for kind of filter options allowed
+      // load the elements necessary
+    }
+    // put the options in to the select
+    for(let key of Object.keys(data.data)) {
+      let option = document.createElement("option")
+      option.value = key
+      option.innerHTML = key
+      ob.colSelect.append(option)
+    }
+    holder.append(ob.colSelect)
+  }
+  return ob
+}
+
+//  there will be one filter categorical for each pane, and within it there will be options to create a 
+//
+let altColumnFilterHolder = ()=> {
+  let ob = {}
+  ob.create = (holder,data) =>  {
+    // attributes 
+    //  data
+    ob.data = data
+    //  non-activity column filters
+    ob.holders =[]
+    // put in the space next to the canvas
+    let filterDiv = document.createElement("div")
+    holder.append(filterDiv)
+    let createFilterButton = document.createElement("button")
+    createFilterButton.innerHTML = "Add Alt column filter"
+    createFilterButton.addEventListener("click",()=> {
+      // call the create filter event, pass in the holder's data element,
+      // append it to the holders
+      let columnfilter = altColumnFilter()
+      columnfilter.create(filterDiv,ob.data)
+    })
+    holder.append(createFilterButton)
+  }
+  // run categorical filters on the object's data
+  // pass that data to the drawing tool so that it doesn't have to re filter every single time the other aspects of the program get used
+  ob.addHolder = (h)=> {
+    ob.holders.push(h)
+  }
+  return ob
+}
+
+
 let selectorCreators = (data,holder,canvasHolder,id)=> {
   let ob = {}
   ob.create = ()=> {
     // create the activity selector
+    // piggy back on this to create the categorical filter too
+    let catFilter=altColumnFilterHolder()
+    
+    catFilter.create(canvasHolder,data)
     let activitySelect = document.createElement("select")
     for(let key of Object.keys(data.data)) {
       let option = document.createElement("option")
@@ -559,7 +662,6 @@ let selectorCreators = (data,holder,canvasHolder,id)=> {
     let filter = activityFilter(holder)
     filter.create()
     activitySelect.onchange = ()=> {
-      console.log("selected ",activitySelect.value)
       //csvData[id] = data.data[activitySelect.value]
       csvRegionArray = data.data["regionName"]
       // create the drawings from the slice data
@@ -590,7 +692,6 @@ let loader = (holder,canvasHolder,id)=> {
     input.name ="fileupload"
     input.accept = "text/csv"
     button.addEventListener("click",()=> {
-      console.log("clc")
       let xmlHttpRequest = new XMLHttpRequest();
 
       let fileName = f.name
@@ -607,14 +708,11 @@ let loader = (holder,canvasHolder,id)=> {
         body:f
       }).then(
         res=> {
-          console.log(res)  
           return res.text()
         }
       ).then(text=> {
-        console.log(text)
         let data = csvDataReader(text)
         data.parse()
-        console.log(data.data)
         // delete the previous column selector
         let prevSelect = canvasHolder.querySelector("select")
         if (prevSelect) {
@@ -673,7 +771,6 @@ let addButton = ()=> {
     btn.onclick = ()=> {
       // create a pane
       let first = pane(ob.count)
-      console.log("adding pane")
       first.create(ob.count)
       ob.count+=1
     }
