@@ -36,10 +36,19 @@ let interpolator = () => {
   return ob
 }
 
-let LerpCol = (c1,c2,t) => {
-  let red = c1.r + ( c2.r - c1.r) *t
-  let blue = c1.b + ( c2.b - c1.b) *t
-  let green = c1.g + ( c2.g - c1.g) *t
+let LerpCol = (c1,c2,t,jitter) => {
+  let red = Math.round(c1.r + ( c2.r - c1.r) *t + Math.random()*jitter)
+  if (red > 255) {
+    red = 255
+  }
+  let blue = Math.round(c1.b + ( c2.b - c1.b) *t+ Math.random()*jitter)
+  if (blue > 255) {
+    blue = 255
+  }
+  let green = Math.round(c1.g + ( c2.g - c1.g) *t+ Math.random()*jitter)
+  if (green > 255) {
+    green = 255
+  }
   return `rgb(${red},${green},${blue})`
 
 }
@@ -142,8 +151,8 @@ let drawLine = (linedata,ctx,activationData)=> {
       // update the data
     }
     ctx.closePath()
-    let fillString = `rgb(0,${Math.round(Math.random()*255)},${Math.round(Math.random()*255)})`
-    regionMap[fillString] = {name:linedata.region}
+    // TODO make th colors unique using lerp of range by area count
+    let activity = false
     for (let i =0; i < activationData.length; i++) {
       let activationValue = activationData[i]
       // check to see if the data we have belongs in this region
@@ -151,19 +160,26 @@ let drawLine = (linedata,ctx,activationData)=> {
         // the min appears to be almost 0 and the max should come in around 0.006
         let scanData = parseFloat(activationValue)
         // add the float value to the region map
-        regionMap[fillString].activation = scanData
         if (! isNaN(scanData)) {
           let  t = globalinfo.scanScalar.calc(scanData)
-          let lerpc = LerpCol(yellow,red,t)
+          let lerpc = LerpCol(yellow,red,t,2)
           ctx.fillStyle=lerpc
           ctx.fill()
+          activity =true
+          regionMap[lerpc] = {activation: scanData,name:linedata.region}
         }
         break
       }
     }
+    if (!activity) {
+    let randnum = Math.round(Math.random()*255)
+    let fillString = `rgb(${randnum},${randnum},${randnum})`
+    regionMap[fillString] = {name:linedata.region}
     ctx.fillStyle = fillString
-    ctx.fillRect((xbounds.min + xbounds.max)/2,(ybounds.min+ ybounds.max)/2,10,10)
+    ctx.fill()
+    ctx.strokeStyle= fillString
     ctx.stroke()
+    }
   }
   return ob
 }
@@ -281,8 +297,9 @@ let sliceSelect = (paneHolder) => {
       let ctx = can.getContext("2d")
       // activate the border point-in-polygon algorithm
       // get image data
+      // loop until we move right to get a pix value that is above certain threshold green
       let pix = ctx.getImageData(x,y,1,1).data
-      let colorString = `rgb(0,${pix[1]},${pix[2]})`
+      let colorString = `rgb(${pix[0]},${pix[1]},${pix[2]})`
       if (regionMap[colorString] != undefined) {
         // make a little side box with the info in it
         // take away a chunk of the image at that area
@@ -422,7 +439,7 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter,ca
     if (prevCan) {
       prevCan.remove()
     }
-    let drawing = setup(3,canvasHolder)
+    let drawing = setup(1,canvasHolder)
     drawing.begin()
     // only run slice selection when we have data 
     let rangeData = rangePrep()
@@ -446,10 +463,8 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter,ca
     label.innerHTML = rangeData.measurements[selected][range.value]
     sliceSelection.createImage(rangeData.slices[selected][5],drawing,activationData)
     // set these for first time
-    activityfilter.max = globalinfo.scanDatamax
-    activityfilter.min = globalinfo.scanDatamin
+    activityfilter.setbounds(globalinfo.scanDatamin,globalinfo.scanDatamax )
     // update filter bars
-    activityfilter.update()
     range.oninput = ()=> {
       // call the filter on the activation data, and pass to create image
         // set max and min to global min max
@@ -469,27 +484,6 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter,ca
     }
     // add events to the filter attached so it redraws canvas also
     //
-    activityfilter.maxele.oninput = ()=> {
-      // update the max and max
-      activityfilter.max = activityfilter.maxele.valueAsNumber
-      // ensure that themin's max gets updated
-      activityfilter.minele.setAttribute("max",activityfilter.max)
-      activationData = activityfilter.filter()
-      getRadioSelected()
-      let ind = parseInt(range.value)
-      let name = rangeData.slices[selected][ind]
-      sliceSelection.createImage(name,drawing,activationData)
-    }
-    activityfilter.minele.oninput = ()=> {
-      // update the min and max
-      activityfilter.min = activityfilter.minele.valueAsNumber
-      activityfilter.maxele.setAttribute("min",activityfilter.min)
-      activationData = activityfilter.filter()
-      getRadioSelected()
-      let ind = parseInt(range.value)
-      let name = rangeData.slices[selected][ind]
-      sliceSelection.createImage(name,drawing,activationData)
-    }
   }
   return ob
 }
@@ -507,41 +501,104 @@ let sepColumnFilter = (holder)=> {
   return ob
 }
 
+
+let makediv = (width,holder)=> {
+  let ob = {}
+  ob.additionalLimit = (v)=> {
+    return undefined
+  }
+  ob.create =() => {
+    let d = document.createElement("div")
+    ob.element = d
+    d.style.height="30px"
+    d.style.width="30px"
+    d.style.position = "relative"
+    let move =(e)=> {
+      let x = e.clientX - holder.getBoundingClientRect().left
+      let left = x
+      if (left > width- 30) { // because the size of the div at the moment is 30
+        left = width -30
+      }
+      if (left < 0) {
+        left = 0
+      }
+      if (ob.additionalLimit(left)) {
+        console.log("stopped marker")
+      } else {
+      ob.element.style.left = `${left}px`
+      }
+      ob.v = parseInt(ob.element.style.left)
+    }
+    let cancelMove =(e)=> {
+      console.log("cancelling")
+      document.removeEventListener("mousemove",move)
+      document.removeEventListener("mouseup",cancelMove)
+    }
+    let click = ()=> {
+      document.addEventListener("mousemove",move)
+      document.addEventListener("mouseup",cancelMove)
+    }
+    d.addEventListener("mousedown",click)
+    d.style.background="#00000052"
+  }
+  return ob
+}
+
+
 let activityFilter = (holder)=> {
   let ob = {}
   ob.min = undefined
   ob.max = undefined
-  ob.update = () => {
-    //update the range sliders
-    ob.maxele.setAttribute("max",`${globalinfo.scanDatamax}`)
-    ob.maxele.setAttribute("min",`${ob.min}`) // prevents mins from being greater than maxs
-    ob.maxele.setAttribute("step",`${ob.max/1000}`)// 1000 steps? 
-    ob.minele.setAttribute("max",`${ob.max}`)
-    ob.minele.setAttribute("min",`${globalinfo.scanDatamin}`)
-    ob.minele.setAttribute("step",`${ob.max/1000}`)
-  }
   ob.addData = (data) => {
     ob.data = data
+  }
+  ob.setbounds = (absmin,absmax) => {
+    ob.absmin = absmin
+    ob.absmax = absmax 
   }
   ob.create =() => {
     // make a range slider that updates the self filter function which is called later on activity data
     // TODO add labels to the sliders
-    let filterSlidermax = document.createElement("input")
-    filterSlidermax.type = "range"
-    // should make the max and max be global max and max with step enough for 100 increments or so
-    filterSlidermax.id="activityfilterslidermax"
-    ob.maxele = filterSlidermax
-    let filterSlidermin = document.createElement("input")
-    // should make the min and max be global min and max with step enough for 100 increments or so
-    filterSlidermin.type = "range"
-    filterSlidermin.id="activityfilterslidermin"
-    ob.minele = filterSlidermin
-    holder.append(filterSlidermin)
-    holder.append(filterSlidermax)
+    let rangeWidth=holder.getBoundingClientRect()
+    ob.width = rangeWidth.width
+    let min =makediv(rangeWidth.width,holder)
+    min.create()
+    let max = makediv(rangeWidth.width,holder)
+    max.create()
+    // prevent sliders from going over each other
+    min.additionalLimit = (v)=> {
+      // stay below the max point
+      let maxleft = parseInt(max.element.style.left)
+      if (v > maxleft) {
+        min.element.style.left = `${maxleft}px`
+        ob.min = maxleft
+        return true
+      }
+      ob.min = v
+      return false
+    }
+    max.additionalLimit =(v)=> {
+      let minleft = parseInt(min.element.style.left)
+      if(v < minleft) {
+        max.element.style.left = `${minleft}px`
+        ob.max = minleft
+        return true
+      }
+      ob.max= v
+      return false
+    }
+    holder.append(min.element)
+    holder.append(max.element)
+    // once placed, set this to keep in correct spot, make them sit on same line
+    max.element.style.top = `-30px` // overlap the element with the other
+    max.element.style.left= "50px"
   }
   ob.filter = () =>{
+    // calculate the actual min activity value
+    let activitymin = ob.absmax*ob.min/ob.width
+    let activitymax = ob.absmax*ob.max/ob.width
     return ob.data.map(e=> {
-      if(e > ob.min && e < ob.max) {
+      if(e > activitymin && e < activitymax) {
         return e
       }
       return NaN
@@ -617,6 +674,11 @@ let altColumnFilter = ()=> {
       }
       return NaN
     })
+  }
+
+  ob.createNumerical = (colData) => {
+    // create the range sliders
+
   }
 
   // create filter options for numerical

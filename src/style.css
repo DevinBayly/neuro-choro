@@ -2,10 +2,12 @@ body {
   height:100vw;
   font-size:1.5vh;
 }
+/*
 .pane {
   width:30%;
   margin:0 auto;
 }
+*/
 .ctrlDiv {
   background:gray;
 }
