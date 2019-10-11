@@ -558,13 +558,21 @@ let activityFilter = (holder)=> {
   }
   ob.create =() => {
     // make a range slider that updates the self filter function which is called later on activity data
-    // TODO add labels to the sliders
     let rangeWidth=holder.getBoundingClientRect()
     ob.width = rangeWidth.width
     let min =makediv(rangeWidth.width,holder)
     min.create()
     let max = makediv(rangeWidth.width,holder)
     max.create()
+    // create labels
+    ob.minlabel = document.createElement("p")
+    ob.minlabel.id="minlabel"
+    ob.minlabel.className = "filterLabel"
+    ob.maxlabel = document.createElement("p")
+    ob.minlabel.id="maxlabel"
+    ob.maxlabel.className = "filterLabel"
+    let labelholder = document.createElement("div")
+    labelholder.id = "labelholder"
     // prevent sliders from going over each other
     min.additionalLimit = (v)=> {
       // stay below the max point
@@ -572,9 +580,13 @@ let activityFilter = (holder)=> {
       if (v > maxleft) {
         min.element.style.left = `${maxleft}px`
         ob.min = maxleft
+        // update min label
+        ob.minlabel.innerHTML = (maxleft*ob.absmax/ob.width).toFixed(5)
         return true
       }
       ob.min = v
+      // update min label
+      ob.minlabel.innerHTML = (v*ob.absmax/ob.width).toFixed(5)
       return false
     }
     max.additionalLimit =(v)=> {
@@ -582,13 +594,17 @@ let activityFilter = (holder)=> {
       if(v < minleft) {
         max.element.style.left = `${minleft}px`
         ob.max = minleft
+        ob.maxlabel.innerHTML = (minleft*ob.absmax/ob.width).toFixed(5)
         return true
       }
+      ob.maxlabel.innerHTML = (v*ob.absmax/ob.width).toFixed(5)
       ob.max= v
       return false
     }
+    labelholder.append(ob.minlabel,ob.maxlabel)
     holder.append(min.element)
     holder.append(max.element)
+    holder.append(labelholder)
     // once placed, set this to keep in correct spot, make them sit on same line
     max.element.style.top = `-30px` // overlap the element with the other
     max.element.style.left= "50px"

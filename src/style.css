@@ -8,6 +8,17 @@ body {
   margin:0 auto;
 }
 */
+
+.filterLabel {
+  display:inline;
+
+}
+.filterLabel::before{
+  content:"(";
+}
+.filterLabel::after {
+  content:")";
+}
 .ctrlDiv {
   background:gray;
 }
