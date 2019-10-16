@@ -868,10 +868,7 @@ let addButton = ()=> {
   return ob
 }
 
-async function Run() {
-  let res = await fetch("http://localhost:8080/src/GeoJson_Brains/total.json")
-  sliceData = await res.json()
+function Run() {
   let btn1 = addButton()
   btn1.create()
 }
-Run()
