@@ -461,6 +461,7 @@ let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter,ca
     }
     canvasHolder.querySelector("#radiosagittal").checked = true
     label.innerHTML = rangeData.measurements[selected][range.value]
+    console.log(rangeData)
     sliceSelection.createImage(rangeData.slices[selected][5],drawing,activationData)
     // set these for first time
     activityfilter.setbounds(globalinfo.scanDatamin,globalinfo.scanDatamax )
