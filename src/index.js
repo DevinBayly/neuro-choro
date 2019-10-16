@@ -560,9 +560,9 @@ let activityFilter = (holder)=> {
     // make a range slider that updates the self filter function which is called later on activity data
     let rangeWidth=holder.getBoundingClientRect()
     ob.width = rangeWidth.width
-    let min =makediv(rangeWidth.width,holder)
+    let min =makediv(rangeWidth.width/4,holder)
     min.create()
-    let max = makediv(rangeWidth.width,holder)
+    let max = makediv(rangeWidth.width/4,holder)
     max.create()
     // create labels
     ob.minlabel = document.createElement("p")
