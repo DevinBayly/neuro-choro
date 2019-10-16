@@ -413,7 +413,7 @@ let pane = (number)=> {
     let csvloader = loader(ctrlDiv,paneDiv,number)
     csvloader.create()
 
-    document.body.append(paneDiv)
+    document.querySelector("#holder").append(paneDiv)
   }
   // setup a div with a canvas inside of it
   return ob
@@ -862,7 +862,7 @@ let addButton = ()=> {
     btn.setAttribute("id","addbtn")
     btn.innerHTML = "Add Pane"
     btndiv.append(btn)
-    document.body.append(btndiv)
+    document.querySelector("#holder").append(btndiv)
 
   }
   return ob
