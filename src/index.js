@@ -801,38 +801,7 @@ let loader = (holder,canvasHolder,id)=> {
   let ob = {}
   // still a bit trigger happy
   ob.create = () => {
-    // make the form that uploads the data
-    let f
-    let input = document.createElement("input")
-    let button = document.createElement("button")
-    button.innerHTML = "Load CSV"
-    input.onchange =()=> {
-      f = input.files[0]
-    }
-    input.type = "file"
-    input.name ="fileupload"
-    input.accept = "text/csv"
-    button.addEventListener("click",()=> {
-      let xmlHttpRequest = new XMLHttpRequest();
-
-      let fileName = f.name
-      let target = "http://localhost:8080" //!! this will need to change when the site has a specific name
-      let mimeType = "text/csv"
-
-      fetch(target,{
-        method:"POST",
-        mode:"cors",
-        headers:{
-          "Content-type":"text/csv",
-          "Content-disposition":`attachment;filename=${fileName}`
-        },
-        body:f
-      }).then(
-        res=> {
-          return res.text()
-        }
-      ).then(text=> {
-        let data = csvDataReader(text)
+        let data = csvDataReader(BrainData)
         data.parse()
         // delete the previous column selector
         let prevSelect = canvasHolder.querySelector("select")
@@ -850,12 +819,7 @@ let loader = (holder,canvasHolder,id)=> {
         // create a select option for the columns of the data now
         let selectors = selectorCreators(data,holder,canvasHolder,id)
         selectors.create()
-      })
-
       // trigger creation of column selection tool with the names from the first line, and pass this to the pane drawing tool
-    })
-    holder.append(input)
-    holder.append(button)
   }
   return ob
 }
