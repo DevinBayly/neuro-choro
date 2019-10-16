@@ -3,6 +3,7 @@ let brain
 let globalinfo
 let csvData = {}// organized by pane count ids
 let csvRegionArray
+// slicedata
 let regionMap = {}  
 
 
