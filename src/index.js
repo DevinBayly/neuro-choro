@@ -3,7 +3,6 @@ let brain
 let globalinfo
 let csvData = {}// organized by pane count ids
 let csvRegionArray
-let sliceData
 let regionMap = {}  
 
 
@@ -769,7 +768,7 @@ let selectorCreators = (data,holder,canvasHolder,id)=> {
     // create the activity selector
     // piggy back on this to create the categorical filter too
     let catFilter=altColumnFilterHolder()
-    
+
     catFilter.create(canvasHolder,data)
     let activitySelect = document.createElement("select")
     for(let key of Object.keys(data.data)) {
