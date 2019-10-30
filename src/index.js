@@ -118,7 +118,7 @@ let globals = (activationData) => {
   return ob
 }
 
-let drawLine = (linedata, ctx, activationData) => {
+let drawLine = (linedata, drawing, activationData) => {
   //linedata  = {points,region}
   let ob = {}
   // need canvas ref
@@ -130,16 +130,17 @@ let drawLine = (linedata, ctx, activationData) => {
   yinterp.setup(globalinfo.globals[1], (500 + 10) * globalinfo.ratio, globalinfo.globals[3], 10)// extra 10is the margin split intwo
   //TODO find better version of how to structure so that the margin can be programmatically set
   ob.draw = () => {
-    ctx.beginPath()
+    drawing.ctx.beginPath()
+    drawing.invisictx.beginPath()
     let red = {
       r: 255,
       g: 0,
       b: 0,
     }
     let yellow = {
-      r: 255,
-      g: 255,
-      b: 255
+      r: 128,
+      g: 128,
+      b: 128
     }
     let first = linedata.points[0]
     let x = xinterp.calc(first[0])
@@ -149,7 +150,8 @@ let drawLine = (linedata, ctx, activationData) => {
     let last = [x, y]
     // create gaplessEntry
     pointValues[linedata.region] = [[x, y]]
-    ctx.moveTo(x, y)
+    drawing.ctx.moveTo(x, y)
+    drawing.invisictx.moveTo(x, y)
     for (let i = 1; i < linedata.points.length; i++) {
       let pt = linedata.points[i]
       let x = xinterp.calc(pt[0])
@@ -169,10 +171,12 @@ let drawLine = (linedata, ctx, activationData) => {
       // do parametric interpolation of points between last x,y and the present one
       //
       pointValues[linedata.region].push([x, y])
-      ctx.lineTo(x, y)
+      drawing.ctx.lineTo(x, y)
+      drawing.invisictx.lineTo(x, y)
       // update the data
     }
-    ctx.closePath()
+    drawing.ctx.closePath()
+    drawing.invisictx.closePath()
     // TODO make th colors unique using lerp of range by area count
     let activity = false
     for (let i = 0; i < activationData.length; i++) {
@@ -185,8 +189,9 @@ let drawLine = (linedata, ctx, activationData) => {
         if (!isNaN(scanData)) {
           let t = globalinfo.scanScalar.calc(scanData)
           let lerpc = LerpCol(yellow, red, t, 2)
-          ctx.fillStyle = lerpc
-          ctx.fill()
+          drawing.ctx.fillStyle = lerpc
+          drawing.ctx.fill()
+          // query the region to color map
           activity = true
         }
         break
@@ -194,10 +199,12 @@ let drawLine = (linedata, ctx, activationData) => {
     }
     if (!activity) {
       // leave the section gray
-      ctx.fillStyle="gray";
-      ctx.fill();
+      drawing.ctx.fillStyle = "gray";
+      drawing.ctx.fill();
     }
     // color on the invisible canvas, this happens regardless of activity
+    drawing.invisictx.fillStyle = `rgb(${regToColMap[linedata.region][0]},${regToColMap[linedata.region][1]},${regToColMap[linedata.region][2]})`
+    drawing.invisictx.fill()
 
 
   }
@@ -221,6 +228,7 @@ let setup = (lwidth, paneHolder) => {
     ob.invisican = invisican
     ob.ctx = can.getContext("2d")
     ob.invisictx = invisican.getContext("2d")
+    document.body.append(invisican)
   }
   ob.resize = (height, width, margin) => {
     ob.can.height = height + margin
@@ -244,7 +252,7 @@ let dataBind = (drawing, data_to_bind, activationData) => {
       points: pline,
       region: data_to_bind.properties.regionName
     }
-    let line = drawLine(drawingData, drawing.ctx, activationData)
+    let line = drawLine(drawingData, drawing, activationData)
     line.draw()
     iter += 1
   }
@@ -350,7 +358,7 @@ let sliceSelect = (paneHolder) => {
         ${ colToRegMap[JSON.stringify(pix)]}
   </p>
   <p class="tooltip-child">
-activity value: ${regionMap[colorString].activation}
+activity value: hey this is missing!
   </p>
 </h3>
 `
@@ -364,7 +372,7 @@ activity value: ${regionMap[colorString].activation}
     }
     if (drawing.posFunc == undefined) {
       let callGetPos = (e) => {
-        getPos(drawing.can, e)
+        getPos(drawing.invisican, e)
       }
       drawing.posFunc = callGetPos
       // store function once so that adding and removing is possible
