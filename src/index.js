@@ -6,7 +6,7 @@ let csvRegionArray
 // slicedata
 // maps that support the click for region name usecase
 let colToRegMap = {}
-let regToColMap ={}
+let regToColMap = {}
 
 
 // this exists to separate the invisible color canvas regions so that clicks upon the screen can  resolve to a color string that can confidently identify the region that is clicked
@@ -22,7 +22,7 @@ let color_collection = (rnum) => {
       for (let b = 0; b < colordim; b++) {
         let base = 255 / colordim // the base is permuted by each of the rgb loop variables
         // must round because the canvas sampling by pixel doesn't return floats
-        ob.array.push([Math.round(base * r),Math.round( base * g),Math.round( base * b)])
+        ob.array.push([Math.round(base * r), Math.round(base * g), Math.round(base * b)])
       }
     }
   }
@@ -188,20 +188,18 @@ let drawLine = (linedata, ctx, activationData) => {
           ctx.fillStyle = lerpc
           ctx.fill()
           activity = true
-          regionMap[lerpc] = { activation: scanData, name: linedata.region }
         }
         break
       }
     }
-    // make this section happen for all regions anyways
-    // equally split the color space per number of regions and then 
-    let randnum = Math.round(Math.random() * 255)
-    let fillString = `rgb(${randnum},${randnum},${randnum})`
-    regionMap[fillString] = { name: linedata.region }
-    ctx.fillStyle = fillString
-    ctx.fill()
-    ctx.strokeStyle = fillString
-    ctx.stroke()
+    if (!activity) {
+      // leave the section gray
+      ctx.fillStyle="gray";
+      ctx.fill();
+    }
+    // color on the invisible canvas, this happens regardless of activity
+
+
   }
   return ob
 }
@@ -210,18 +208,27 @@ let setup = (lwidth, paneHolder) => {
   let ob = {}
   ob.outerHolder = paneHolder
   ob.begin = () => {
+    // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
+    // easy hack to keep performance and accuracy of interactivity on canvas
+    let invisican = document.createElement("canvas")
+    invisican.id = "invisican"
     let can = document.createElement("canvas")
     ob.innerHolder = document.createElement("div")
     ob.innerHolder.className = "innerholder"
     ob.innerHolder.append(can)
     paneHolder.append(ob.innerHolder)
     ob.can = can
+    ob.invisican = invisican
     ob.ctx = can.getContext("2d")
+    ob.invisictx = invisican.getContext("2d")
   }
   ob.resize = (height, width, margin) => {
     ob.can.height = height + margin
     ob.can.width = width + margin
+    ob.invisican.height = height + margin
+    ob.invisican.width = width + margin
     ob.ctx.lineWidth = lwidth
+    ob.invisictx.lineWidth = lwidth
   }
   return ob
 }
@@ -248,13 +255,13 @@ let featurePass = (drawing, upperData, activationData) => {
   // establish a color map for the invisible canvas
   let cc = color_collection(upperData.features.length)
   // create maps
-  upperData.features.map((f,i)=> {
+  upperData.features.map((f, i) => {
     // this is for the fill on the invisible canvas
-    regToColMap[f.properties.regionName] =cc.array[i]
+    regToColMap[f.properties.regionName] = cc.array[i]
     colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
   })
-  console.log(regToColMap,colToRegMap)
-  
+  console.log(regToColMap, colToRegMap)
+
   ob.mapFeatures = () => {
     for (let feature of upperData.features) {
       let db = dataBind(drawing, feature, activationData)
@@ -331,8 +338,8 @@ let sliceSelect = (paneHolder) => {
       // get image data
       // loop until we move right to get a pix value that is above certain threshold green
       let pix = ctx.getImageData(x, y, 1, 1).data
-      let colorString = `rgb(${pix[0]},${pix[1]},${pix[2]})`
-      if (regionMap[colorString] != undefined) {
+      // query the invisible map
+      if (colToRegMap[JSON.stringify(pix)] != undefined) {
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
@@ -340,7 +347,7 @@ let sliceSelect = (paneHolder) => {
         rightDiv.innerHTML = `
 <h3>Selected Region
   <p class="tooltip-child">
-        ${ regionMap[colorString].name}
+        ${ colToRegMap[JSON.stringify(pix)]}
   </p>
   <p class="tooltip-child">
 activity value: ${regionMap[colorString].activation}
