@@ -4,8 +4,30 @@ let globalinfo
 let csvData = {}// organized by pane count ids
 let csvRegionArray
 // slicedata
-let regionMap = {}
+// maps that support the click for region name usecase
+let colToRegMap = {}
+let regToColMap ={}
 
+
+// this exists to separate the invisible color canvas regions so that clicks upon the screen can  resolve to a color string that can confidently identify the region that is clicked
+let color_collection = (rnum) => {
+  ob = {}
+  // this is the number of color chunks for each of the rgb channels
+  let colordim = Math.ceil(Math.pow(rnum, 1 / 3))
+  console.log(colordim, "is the cube of ", rnum)
+  ob.array = []
+  // nesting 3 deep, but each should be short
+  for (let r = 0; r < colordim; r++) {
+    for (let g = 0; g < colordim; g++) {
+      for (let b = 0; b < colordim; b++) {
+        let base = 255 / colordim // the base is permuted by each of the rgb loop variables
+        // must round because the canvas sampling by pixel doesn't return floats
+        ob.array.push([Math.round(base * r),Math.round( base * g),Math.round( base * b)])
+      }
+    }
+  }
+  return ob
+}
 
 let pointValues = {}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
 let parametricInterp = () => {
@@ -223,6 +245,16 @@ let dataBind = (drawing, data_to_bind, activationData) => {
 
 let featurePass = (drawing, upperData, activationData) => {
   let ob = {}
+  // establish a color map for the invisible canvas
+  let cc = color_collection(upperData.features.length)
+  // create maps
+  upperData.features.map((f,i)=> {
+    // this is for the fill on the invisible canvas
+    regToColMap[f.properties.regionName] =cc.array[i]
+    colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
+  })
+  console.log(regToColMap,colToRegMap)
+  
   ob.mapFeatures = () => {
     for (let feature of upperData.features) {
       let db = dataBind(drawing, feature, activationData)
@@ -910,44 +942,4 @@ async function Run() {
   let btn1 = addButton()
   btn1.create()
 }
-//Run()
-//do the second canvas creation work here
-
-let color_collection = (rnum) => {
-  ob = {}
-  // this is the number of color chunks for each of the rgb channels
-  let colordim = Math.ceil(Math.pow(rnum, 1 / 3))
-  console.log(colordim, "is the cube of ", rnum)
-  ob.array = []
-  // nesting 3 deep, but each should be short
-  for (let r = 0; r < colordim; r++) {
-    for (let g = 0; g < colordim; g++) {
-      for (let b = 0; b < colordim; b++) {
-        let base = 255 / colordim // the base is permuted by each of the rgb loop variables
-        ob.array.push([base * r, base * g, base * b])
-      }
-    }
-  }
-  return ob
-}
-window.onload = () => {
-  let cc = color_collection(500)
-  console.log(cc)
-  let can = document.createElement("canvas")
-  document.body.append(can)
-  let ctx = can.getContext("2d")
-  // loop through the space
-  let lim = Math.pow(cc.array.length, 1 / 2)
-  console.log(lim)
-  let width = can.width/lim
-  let height = can.height/lim
-  let i = 0
-  for (let x = 0; x < lim; x++) {
-    for (let y = 0; y < lim; y++) {
-      let arrItem = cc.array[i]
-      ctx.fillStyle = `rgb(${arrItem[0]},${arrItem[1]},${arrItem[2]})`
-      ctx.fillRect(x*width,y*height,width,height)
-      i++
-    }
-  }
-}
+Run()
