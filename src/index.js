@@ -337,15 +337,16 @@ let sliceSelect = (paneHolder) => {
     // data height vs width ration
     let allfeatures = featurePass(drawing, brain, activationData)
     allfeatures.mapFeatures()
-    let getPos = (can, e) => {
-      let rect = can.getBoundingClientRect()
+    let getPos = (drawing, e) => {
+      // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
+      let rect = drawing.can.getBoundingClientRect()
       let x = e.clientX - rect.left
       let y = e.clientY - rect.top
-      let ctx = can.getContext("2d")
+      let ctx =drawing.invisictx
       // activate the border point-in-polygon algorithm
       // get image data
       // loop until we move right to get a pix value that is above certain threshold green
-      let pix = ctx.getImageData(x, y, 1, 1).data
+      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0,3))
       // query the invisible map
       if (colToRegMap[JSON.stringify(pix)] != undefined) {
         // make a little side box with the info in it
@@ -372,7 +373,7 @@ activity value: hey this is missing!
     }
     if (drawing.posFunc == undefined) {
       let callGetPos = (e) => {
-        getPos(drawing.invisican, e)
+        getPos(drawing, e)
       }
       drawing.posFunc = callGetPos
       // store function once so that adding and removing is possible
