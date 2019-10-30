@@ -228,7 +228,6 @@ let setup = (lwidth, paneHolder) => {
     ob.invisican = invisican
     ob.ctx = can.getContext("2d")
     ob.invisictx = invisican.getContext("2d")
-    document.body.append(invisican)
   }
   ob.resize = (height, width, margin) => {
     ob.can.height = height + margin
