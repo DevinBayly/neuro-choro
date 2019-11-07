@@ -304,8 +304,8 @@ let rangePrep = () => {
     }
   }
   let sortfunc = (x, y) => {
-    let xmm = parseInt(x.match(/(-?\d+)(mm)?.json/)[1])
-    let ymm = parseInt(y.match(/(-?\d+)(mm)?.json/)[1])
+    let xmm = parseInt(x.match(/(-?\d+)(mm)?\..*json/)[1])
+    let ymm = parseInt(y.match(/(-?\d+)(mm)?\..*json/)[1])
     return xmm - ymm
   }
   slicesByView.axial.sort(sortfunc)
@@ -831,7 +831,8 @@ let selectorCreators = (data, holder, canvasHolder, id) => {
     filter.create()
     activitySelect.onchange = () => {
       //csvData[id] = data.data[activitySelect.value]
-      csvRegionArray = data.data["regionName"]
+      // remove whitespace
+      csvRegionArray = data.data["regionName"].map(e=> e.replace(/\s/,""))
       // create the drawings from the slice data
       // parse the data into numeric
       let numericData = data.data[activitySelect.value].map(e => parseFloat(e))
@@ -952,7 +953,7 @@ let addButton = () => {
 }
 
 async function Run() {
-  let res = await fetch("http://localhost:8080/src/GeoJson_Brains/total.json")
+  let res = await fetch("http://localhost:8080/src/GeoJson_HCP-MMP1/total_small_parsed.json")
   sliceData = await res.json()
   let btn1 = addButton()
   btn1.create()
