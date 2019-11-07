@@ -606,10 +606,10 @@ let activityFilter = (holder) => {
   ob.create = () => {
     // make a range slider that updates the self filter function which is called later on activity data
     let rangeWidth = holder.getBoundingClientRect()
-    ob.width = rangeWidth.width
-    let min = makediv(rangeWidth.width / 4, holder)
+    ob.width = rangeWidth.width/4
+    let min = makediv(ob.width , holder)
     min.create()
-    let max = makediv(rangeWidth.width / 4, holder)
+    let max = makediv(ob.width , holder)
     max.create()
     // create labels
     ob.minlabel = document.createElement("p")
@@ -632,8 +632,8 @@ let activityFilter = (holder) => {
         return true
       }
       ob.min = v
-      // update min label
-      ob.minlabel.innerHTML = (v * ob.absmax / ob.width).toFixed(5)
+      // update min label and account for the divslider width
+      ob.minlabel.innerHTML = (v * ob.absmax / (ob.width-30)).toFixed(5)
       return false
     }
     max.additionalLimit = (v) => {
@@ -644,7 +644,7 @@ let activityFilter = (holder) => {
         ob.maxlabel.innerHTML = (minleft * ob.absmax / ob.width).toFixed(5)
         return true
       }
-      ob.maxlabel.innerHTML = (v * ob.absmax / ob.width).toFixed(5)
+      ob.maxlabel.innerHTML = (v * ob.absmax / (ob.width-30)).toFixed(5)
       ob.max = v
       return false
     }
