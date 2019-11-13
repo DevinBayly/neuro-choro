@@ -2,6 +2,7 @@
 let brain
 let globalinfo
 let csvRegionArray
+let regNameToValueMap = {}
 // slicedata
 // maps that support the click for region name usecase
 let colToRegMap = {}
@@ -154,26 +155,17 @@ let drawLine = (linedata, drawing, activationData) => {
     }
     drawing.ctx.closePath()
     drawing.invisictx.closePath()
-    let activity = false
-    for (let i = 0; i < activationData.length; i++) {
-      let activationValue = activationData[i]
-      // check to see if the data we have belongs in this region
-      if (linedata.region == csvRegionArray[i]) {
-        // the min appears to be almost 0 and the max should come in around 0.006
-        let scanData = parseFloat(activationValue)
-        // add the float value to the region map
-        if (!isNaN(scanData)) {
-          let t = globalinfo.scanScalar.calc(scanData)
-          let lerpc = LerpCol(yellow, red, t, 2)
-          drawing.ctx.fillStyle = lerpc
-          drawing.ctx.fill()
-          // query the region to color map
-          activity = true
-        }
-        break
+    if (regNameToValueMap != undefined) {
+      if (regNameToValueMap[linedata.region]) {
+        let scanData = regNameToValueMap[linedata.region]
+        let t = globalinfo.scanScalar.calc(scanData)
+        let lerpc = LerpCol(yellow, red, t, 2)
+        drawing.ctx.fillStyle = lerpc
+        drawing.ctx.fill()
+        // query the region to color map
+        activity = true
       }
-    }
-    if (!activity) {
+    } else {
       // leave the section gray
       drawing.ctx.fillStyle = "gray";
       drawing.ctx.fill();
@@ -796,10 +788,8 @@ let altColumnFilterHolder = () => {
 let selectorCreators = (data, holder, canvasHolder, id) => {
   let ob = {}
   ob.create = () => {
-    // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
-    let catFilter = altColumnFilterHolder()
-    catFilter.create(canvasHolder, data)
 
+    // this is the selection element that is populated by the column names in the csv
     let valueColumnSelect = document.createElement("select")
     for (let key of Object.keys(data.data)) {
       let option = document.createElement("option")
@@ -808,15 +798,30 @@ let selectorCreators = (data, holder, canvasHolder, id) => {
       valueColumnSelect.append(option)
     }
     holder.append(valueColumnSelect)
+
     //create the activity filterselector
     let filter = activityFilter(holder)
     filter.create()
+
+    // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
+    let catFilter = altColumnFilterHolder()
+    catFilter.create(canvasHolder, data)
+
+    // when we select a column as the value column of the activity data coloring we must grab the data from there and initiate the downstream draw
     valueColumnSelect.onchange = () => {
-      // remove whitespace
-      csvRegionArray = data.data["regionName"].map(e => e.replace(/\s/, ""))
+
+      //create the regionName, activity value object to pass along so drawLine has an easier time with filling
+
       // create the drawings from the slice data
       // parse the data into numeric
       let numericData = data.data[valueColumnSelect.value].map(e => parseFloat(e))
+      regToValueMap = {}
+      csvRegionArray = data.data["regionName"].map((e, i) => {
+        // remove whitespace
+        let name = e.replace(/\s/, "")
+        regNameToValueMap[name] = numericData[i]
+        return name
+      })
       filter.addData(numericData)
       let drawing = createCanvasDrawing(holder, canvasHolder, numericData, filter, catFilter)
       drawing.run()
