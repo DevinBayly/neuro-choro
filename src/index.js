@@ -788,6 +788,19 @@ let altColumnFilterHolder = () => {
 let selectorCreators = (data, holder, canvasHolder, id) => {
   let ob = {}
   ob.create = () => {
+    // delete previous selection tools
+    let prevSelect = canvasHolder.querySelector("select")
+    if (prevSelect) {
+      prevSelect.remove()
+    }
+    let prevRange = canvasHolder.querySelector("#rangeslider")
+    if (prevRange) {
+      prevRange.remove()
+    }
+    let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
+    if (prevLabel) {
+      prevLabel.remove()
+    }
 
     // this is the selection element that is populated by the column names in the csv
     let valueColumnSelect = document.createElement("select")
@@ -819,6 +832,7 @@ let selectorCreators = (data, holder, canvasHolder, id) => {
       csvRegionArray = data.data["regionName"].map((e, i) => {
         // remove whitespace
         let name = e.replace(/\s/, "")
+        // populate the region name and value array for drawLine time
         regNameToValueMap[name] = numericData[i]
         return name
       })
@@ -833,7 +847,6 @@ let selectorCreators = (data, holder, canvasHolder, id) => {
 
 let loader = (holder, canvasHolder, id) => {
   let ob = {}
-  // still a bit trigger happy
   ob.create = () => {
     // make the form that uploads the data
     let f
@@ -869,18 +882,6 @@ let loader = (holder, canvasHolder, id) => {
         let data = csvDataReader(text)
         data.parse()
         // delete the previous column selector
-        let prevSelect = canvasHolder.querySelector("select")
-        if (prevSelect) {
-          prevSelect.remove()
-        }
-        let prevRange = canvasHolder.querySelector("#rangeslider")
-        if (prevRange) {
-          prevRange.remove()
-        }
-        let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
-        if (prevLabel) {
-          prevLabel.remove()
-        }
         // create a select option for the columns of the data now
         let selectors = selectorCreators(data, holder, canvasHolder, id)
         selectors.create()
