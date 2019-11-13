@@ -455,7 +455,10 @@ let createCanvasDrawing = (ctrlDiv, canvasHolder, activationData, activityfilter
     drawing.begin()
     // only run slice selection when we have data 
     let rangeData = rangePrep()
+    // defaults for the range slider
     range.value = 20
+    range.min = 0
+    range.step = 1
     // make the range slider tied to slice lookup
     // start with sagittal
     let selected = "sagittal"
@@ -470,28 +473,42 @@ let createCanvasDrawing = (ctrlDiv, canvasHolder, activationData, activityfilter
         selected = "axial"
 
       }
+      range.max = rangeData.slices[selected].length - 1
     }
+    // force saggital to be selected at start by default
     canvasHolder.querySelector("#radiosagittal").checked = true
+    // grab measurement value from correct array provided the range value
     label.innerHTML = rangeData.measurements[selected][range.value]
-    sliceSelection.createImage(rangeData.slices[selected][5], drawing, activationData)
-    // set these for first time
+
+    // actual beginning of process to draw a brain slice, start at random position
+    // important stuff happens here! such as creation of globalinfo used right after
+    sliceSelection.createImage(rangeData.slices[selected][range.value], drawing, activationData)
+
+
+    // set the activity bounds at their lowest and highest possible values, manipulation will occur folling this
     activityfilter.setbounds(globalinfo.scanDatamin, globalinfo.scanDatamax)
-    // update filter bars
+
+    // when we adjust the range slider change the material in the canvas shown
     range.oninput = () => {
-      // call the filter on the activation data, and pass to create image
-      // set max and min to global min max
+      // call the filter on the activation data, and pass to create image, this function internally takes into account where the filter min and max interactive divs are positioned
       activationData = activityfilter.filter()
       // check for categorical filters, step through the list of the filter holder and apply the filter functions of each to the activation data
       categoricalFilters.filtersList.map(catfilter => {
         activationData = catfilter.filter(activationData)
       })
+
+
+      // determine which radio button is currently pressed
       getRadioSelected()
+
+
+
+      // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
       let name = rangeData.slices[selected][ind]
       label.innerHTML = rangeData.measurements[selected][range.value]
-      range.min = 0
-      range.max = rangeData.slices[selected].length - 1
-      range.step = 1
+
+      // draw the actual data on the canvas given the activation data and the slice to index the sliceData set of region boundaries
       sliceSelection.createImage(name, drawing, activationData)
     }
     // add events to the filter attached so it redraws canvas also
@@ -499,7 +516,7 @@ let createCanvasDrawing = (ctrlDiv, canvasHolder, activationData, activityfilter
   }
   return ob
 }
-// perhaps create a collection of columns filter that can give you the results of your data
+
 // this is a filter that can work on other columns
 
 let sepColumnFilter = (holder) => {
@@ -779,28 +796,27 @@ let altColumnFilterHolder = () => {
 let selectorCreators = (data, holder, canvasHolder, id) => {
   let ob = {}
   ob.create = () => {
-    // create the activity selector
-    // piggy back on this to create the categorical filter too
+    // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
     let catFilter = altColumnFilterHolder()
-
     catFilter.create(canvasHolder, data)
-    let activitySelect = document.createElement("select")
+
+    let valueColumnSelect = document.createElement("select")
     for (let key of Object.keys(data.data)) {
       let option = document.createElement("option")
       option.value = key
       option.innerHTML = key
-      activitySelect.append(option)
+      valueColumnSelect.append(option)
     }
-    holder.append(activitySelect)
+    holder.append(valueColumnSelect)
     //create the activity filterselector
     let filter = activityFilter(holder)
     filter.create()
-    activitySelect.onchange = () => {
+    valueColumnSelect.onchange = () => {
       // remove whitespace
       csvRegionArray = data.data["regionName"].map(e => e.replace(/\s/, ""))
       // create the drawings from the slice data
       // parse the data into numeric
-      let numericData = data.data[activitySelect.value].map(e => parseFloat(e))
+      let numericData = data.data[valueColumnSelect.value].map(e => parseFloat(e))
       filter.addData(numericData)
       let drawing = createCanvasDrawing(holder, canvasHolder, numericData, filter, catFilter)
       drawing.run()
