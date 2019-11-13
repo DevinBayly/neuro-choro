@@ -204,6 +204,41 @@ let setup = (lwidth, paneHolder) => {
     ob.invisican = invisican
     ob.ctx = can.getContext("2d")
     ob.invisictx = invisican.getContext("2d")
+    let getPos = (e) => {
+      // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
+      let rect = ob.can.getBoundingClientRect()
+      let x = e.clientX - rect.left
+      let y = e.clientY - rect.top
+      let ctx = ob.invisictx
+      // activate the border point-in-polygon algorithm
+      // get image data
+      // loop until we move right to get a pix value that is above certain threshold green
+      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
+      // query the invisible map
+      if (colToRegMap[JSON.stringify(pix)] != undefined) {
+        // make a little side box with the info in it
+        // take away a chunk of the image at that area
+        let rightDiv = document.createElement("div")
+        rightDiv.id = "tooltip"
+        rightDiv.innerHTML = `
+            <h3>Selected Region
+              <p class="tooltip-child">
+                    ${ colToRegMap[JSON.stringify(pix)]}
+              </p>
+              <p class="tooltip-child">
+            activity value: hey this is missing!
+              </p>
+            </h3>
+            `
+        //append to canvas element if possible
+        ob.innerHolder.append(rightDiv)
+        setTimeout(() => {
+          // replace the original pixels
+          rightDiv.remove()
+        }, 3500)
+      }
+    }
+    ob.can.addEventListener("click", getPos)
   }
   ob.resize = (height, width, margin) => {
     ob.can.height = height + margin
@@ -310,50 +345,6 @@ let sliceSelect = (paneHolder) => {
     // data height vs width ration
     let allfeatures = featurePass(drawing, brain, activationData)
     allfeatures.mapFeatures()
-    let getPos = (drawing, e) => {
-      // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
-      let rect = drawing.can.getBoundingClientRect()
-      let x = e.clientX - rect.left
-      let y = e.clientY - rect.top
-      let ctx = drawing.invisictx
-      // activate the border point-in-polygon algorithm
-      // get image data
-      // loop until we move right to get a pix value that is above certain threshold green
-      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
-      // query the invisible map
-      if (colToRegMap[JSON.stringify(pix)] != undefined) {
-        // make a little side box with the info in it
-        // take away a chunk of the image at that area
-        let rightDiv = document.createElement("div")
-        rightDiv.id = "tooltip"
-        rightDiv.innerHTML = `
-<h3>Selected Region
-  <p class="tooltip-child">
-        ${ colToRegMap[JSON.stringify(pix)]}
-  </p>
-  <p class="tooltip-child">
-activity value: hey this is missing!
-  </p>
-</h3>
-`
-        //append to canvas element if possible
-        drawing.innerHolder.append(rightDiv)
-        setTimeout(() => {
-          // replace the original pixels
-          rightDiv.remove()
-        }, 3500)
-      }
-    }
-    if (drawing.posFunc == undefined) {
-      let callGetPos = (e) => {
-        getPos(drawing, e)
-      }
-      drawing.posFunc = callGetPos
-      // store function once so that adding and removing is possible
-    } else {
-      drawing.can.removeEventListener("click", drawing.posFunc)
-    }
-    drawing.can.addEventListener("click", drawing.posFunc)
   }
   return ob
 }
