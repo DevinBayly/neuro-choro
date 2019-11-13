@@ -1,7 +1,6 @@
 
 let brain
 let globalinfo
-let csvData = {}// organized by pane count ids
 let csvRegionArray
 // slicedata
 // maps that support the click for region name usecase
@@ -29,7 +28,6 @@ let color_collection = (rnum) => {
   return ob
 }
 
-let pointValues = {}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
 let parametricInterp = () => {
   let ob = {}
   ob.setupRun = (x0, y0, x1, y1, step) => {
@@ -145,39 +143,17 @@ let drawLine = (linedata, drawing, activationData) => {
     let first = linedata.points[0]
     let x = xinterp.calc(first[0])
     let y = yinterp.calc(first[1])
-    let xbounds = { min: x, max: x }
-    let ybounds = { min: y, max: y }
-    let last = [x, y]
-    // create gaplessEntry
-    pointValues[linedata.region] = [[x, y]]
     drawing.ctx.moveTo(x, y)
     drawing.invisictx.moveTo(x, y)
     for (let i = 1; i < linedata.points.length; i++) {
       let pt = linedata.points[i]
       let x = xinterp.calc(pt[0])
       let y = yinterp.calc(pt[1])
-      if (xbounds.min > x) {
-        xbounds.min = x
-      }
-      if (xbounds.max < x) {
-        xbounds.max = x
-      }
-      if (ybounds.max < y) {
-        ybounds.max = y
-      }
-      if (ybounds.min > y) {
-        ybounds.min = y
-      }
-      // do parametric interpolation of points between last x,y and the present one
-      //
-      pointValues[linedata.region].push([x, y])
       drawing.ctx.lineTo(x, y)
       drawing.invisictx.lineTo(x, y)
-      // update the data
     }
     drawing.ctx.closePath()
     drawing.invisictx.closePath()
-    // TODO make th colors unique using lerp of range by area count
     let activity = false
     for (let i = 0; i < activationData.length; i++) {
       let activationValue = activationData[i]
@@ -243,7 +219,6 @@ let setup = (lwidth, paneHolder) => {
 let dataBind = (drawing, data_to_bind, activationData) => {
   // drawing has can and ctx attributes
   // find a way get to the data we need here
-  let iter = 0
   for (let pline of data_to_bind.geometry.coordinates) {
     //let data_bound = {coords:line,properties
     //make copy of line data and bind in the region name
@@ -253,7 +228,6 @@ let dataBind = (drawing, data_to_bind, activationData) => {
     }
     let line = drawLine(drawingData, drawing, activationData)
     line.draw()
-    iter += 1
   }
 }
 
@@ -341,11 +315,11 @@ let sliceSelect = (paneHolder) => {
       let rect = drawing.can.getBoundingClientRect()
       let x = e.clientX - rect.left
       let y = e.clientY - rect.top
-      let ctx =drawing.invisictx
+      let ctx = drawing.invisictx
       // activate the border point-in-polygon algorithm
       // get image data
       // loop until we move right to get a pix value that is above certain threshold green
-      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0,3))
+      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
       // query the invisible map
       if (colToRegMap[JSON.stringify(pix)] != undefined) {
         // make a little side box with the info in it
@@ -606,11 +580,12 @@ let activityFilter = (holder) => {
   ob.create = () => {
     // make a range slider that updates the self filter function which is called later on activity data
     let rangeWidth = holder.getBoundingClientRect()
-    ob.width = rangeWidth.width/4
-    let min = makediv(ob.width , holder)
+    let min = makediv(rangeWidth.width / 4, holder)
     min.create()
-    let max = makediv(ob.width , holder)
+    let max = makediv(rangeWidth.width / 4, holder)
     max.create()
+    // this si the amount of screen space that the filter div's can move, minus the width of the element
+    ob.width = (rangeWidth.width / 4) - 30
     // create labels
     ob.minlabel = document.createElement("p")
     ob.minlabel.id = "minlabel"
@@ -628,12 +603,12 @@ let activityFilter = (holder) => {
         min.element.style.left = `${maxleft}px`
         ob.min = maxleft
         // update min label
-        ob.minlabel.innerHTML = (maxleft * ob.absmax / ob.width).toFixed(5)
+        ob.minlabel.innerHTML = (maxleft * ob.absmax / (ob.width)).toFixed(5)
         return true
       }
       ob.min = v
       // update min label and account for the divslider width
-      ob.minlabel.innerHTML = (v * ob.absmax / (ob.width-30)).toFixed(5)
+      ob.minlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
       return false
     }
     max.additionalLimit = (v) => {
@@ -641,10 +616,10 @@ let activityFilter = (holder) => {
       if (v < minleft) {
         max.element.style.left = `${minleft}px`
         ob.max = minleft
-        ob.maxlabel.innerHTML = (minleft * ob.absmax / ob.width).toFixed(5)
+        ob.maxlabel.innerHTML = (minleft * ob.absmax / (ob.width)).toFixed(5)
         return true
       }
-      ob.maxlabel.innerHTML = (v * ob.absmax / (ob.width-30)).toFixed(5)
+      ob.maxlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
       ob.max = v
       return false
     }
@@ -830,9 +805,8 @@ let selectorCreators = (data, holder, canvasHolder, id) => {
     let filter = activityFilter(holder)
     filter.create()
     activitySelect.onchange = () => {
-      //csvData[id] = data.data[activitySelect.value]
       // remove whitespace
-      csvRegionArray = data.data["regionName"].map(e=> e.replace(/\s/,""))
+      csvRegionArray = data.data["regionName"].map(e => e.replace(/\s/, ""))
       // create the drawings from the slice data
       // parse the data into numeric
       let numericData = data.data[activitySelect.value].map(e => parseFloat(e))
