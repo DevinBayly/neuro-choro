@@ -1,13 +1,24 @@
-
-let brain
-let globalinfo
-let csvData = {}// organized by pane count ids
-let csvRegionArray
-// slicedata
-// maps that support the click for region name usecase
-let colToRegMap = {}
-let regToColMap = {}
-
+class Application {
+  constructor() {
+    this.brain ={}
+    this.globalinfo = {}
+    this.csvRegionArray ={}
+    this.regNameToValueMap = {}
+    // slicedata
+    // maps that support the click for region name usecase
+    this.colToRegMap = {}
+    this.regToColMap = {}
+  }
+  async fetchData() {
+    // fetch the data from server on iodide this will be a local link
+    this.res = await fetch("http://localhost:8080/src/GeoJson_HCP-MMP1/total_small_parsed.json")
+    this.sliceData = await res.json()
+  }
+  startup() {
+    this.btn1 = this.addButton()
+    btn1.create()
+  }
+}
 
 // this exists to separate the invisible color canvas regions so that clicks upon the screen can  resolve to a color string that can confidently identify the region that is clicked
 let color_collection = (rnum) => {
@@ -29,7 +40,6 @@ let color_collection = (rnum) => {
   return ob
 }
 
-let pointValues = {}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
 let parametricInterp = () => {
   let ob = {}
   ob.setupRun = (x0, y0, x1, y1, step) => {
@@ -145,59 +155,28 @@ let drawLine = (linedata, drawing, activationData) => {
     let first = linedata.points[0]
     let x = xinterp.calc(first[0])
     let y = yinterp.calc(first[1])
-    let xbounds = { min: x, max: x }
-    let ybounds = { min: y, max: y }
-    let last = [x, y]
-    // create gaplessEntry
-    pointValues[linedata.region] = [[x, y]]
     drawing.ctx.moveTo(x, y)
     drawing.invisictx.moveTo(x, y)
     for (let i = 1; i < linedata.points.length; i++) {
       let pt = linedata.points[i]
       let x = xinterp.calc(pt[0])
       let y = yinterp.calc(pt[1])
-      if (xbounds.min > x) {
-        xbounds.min = x
-      }
-      if (xbounds.max < x) {
-        xbounds.max = x
-      }
-      if (ybounds.max < y) {
-        ybounds.max = y
-      }
-      if (ybounds.min > y) {
-        ybounds.min = y
-      }
-      // do parametric interpolation of points between last x,y and the present one
-      //
-      pointValues[linedata.region].push([x, y])
       drawing.ctx.lineTo(x, y)
       drawing.invisictx.lineTo(x, y)
-      // update the data
     }
     drawing.ctx.closePath()
     drawing.invisictx.closePath()
-    // TODO make th colors unique using lerp of range by area count
-    let activity = false
-    for (let i = 0; i < activationData.length; i++) {
-      let activationValue = activationData[i]
-      // check to see if the data we have belongs in this region
-      if (linedata.region == csvRegionArray[i]) {
-        // the min appears to be almost 0 and the max should come in around 0.006
-        let scanData = parseFloat(activationValue)
-        // add the float value to the region map
-        if (!isNaN(scanData)) {
-          let t = globalinfo.scanScalar.calc(scanData)
-          let lerpc = LerpCol(yellow, red, t, 2)
-          drawing.ctx.fillStyle = lerpc
-          drawing.ctx.fill()
-          // query the region to color map
-          activity = true
-        }
-        break
+    if (regNameToValueMap != undefined) {
+      if (regNameToValueMap[linedata.region]) {
+        let scanData = regNameToValueMap[linedata.region]
+        let t = globalinfo.scanScalar.calc(scanData)
+        let lerpc = LerpCol(yellow, red, t, 2)
+        drawing.ctx.fillStyle = lerpc
+        drawing.ctx.fill()
+        // query the region to color map
+        activity = true
       }
-    }
-    if (!activity) {
+    } else {
       // leave the section gray
       drawing.ctx.fillStyle = "gray";
       drawing.ctx.fill();
@@ -228,6 +207,41 @@ let setup = (lwidth, paneHolder) => {
     ob.invisican = invisican
     ob.ctx = can.getContext("2d")
     ob.invisictx = invisican.getContext("2d")
+    let getPos = (e) => {
+      // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
+      let rect = ob.can.getBoundingClientRect()
+      let x = e.clientX - rect.left
+      let y = e.clientY - rect.top
+      let ctx = ob.invisictx
+      // activate the border point-in-polygon algorithm
+      // get image data
+      // loop until we move right to get a pix value that is above certain threshold green
+      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
+      // query the invisible map
+      if (colToRegMap[JSON.stringify(pix)] != undefined) {
+        // make a little side box with the info in it
+        // take away a chunk of the image at that area
+        let rightDiv = document.createElement("div")
+        rightDiv.id = "tooltip"
+        rightDiv.innerHTML = `
+            <h3>Selected Region
+              <p class="tooltip-child">
+                    ${ colToRegMap[JSON.stringify(pix)]}
+              </p>
+              <p class="tooltip-child">
+            activity value: hey this is missing!
+              </p>
+            </h3>
+            `
+        //append to canvas element if possible
+        ob.innerHolder.append(rightDiv)
+        setTimeout(() => {
+          // replace the original pixels
+          rightDiv.remove()
+        }, 3500)
+      }
+    }
+    ob.can.addEventListener("click", getPos)
   }
   ob.resize = (height, width, margin) => {
     ob.can.height = height + margin
@@ -243,7 +257,6 @@ let setup = (lwidth, paneHolder) => {
 let dataBind = (drawing, data_to_bind, activationData) => {
   // drawing has can and ctx attributes
   // find a way get to the data we need here
-  let iter = 0
   for (let pline of data_to_bind.geometry.coordinates) {
     //let data_bound = {coords:line,properties
     //make copy of line data and bind in the region name
@@ -253,7 +266,6 @@ let dataBind = (drawing, data_to_bind, activationData) => {
     }
     let line = drawLine(drawingData, drawing, activationData)
     line.draw()
-    iter += 1
   }
 }
 
@@ -304,8 +316,8 @@ let rangePrep = () => {
     }
   }
   let sortfunc = (x, y) => {
-    let xmm = parseInt(x.match(/(-?\d+)(mm)?.json/)[1])
-    let ymm = parseInt(y.match(/(-?\d+)(mm)?.json/)[1])
+    let xmm = parseInt(x.match(/(-?\d+)(mm)?\..*json/)[1])
+    let ymm = parseInt(y.match(/(-?\d+)(mm)?\..*json/)[1])
     return xmm - ymm
   }
   slicesByView.axial.sort(sortfunc)
@@ -336,50 +348,6 @@ let sliceSelect = (paneHolder) => {
     // data height vs width ration
     let allfeatures = featurePass(drawing, brain, activationData)
     allfeatures.mapFeatures()
-    let getPos = (drawing, e) => {
-      // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
-      let rect = drawing.can.getBoundingClientRect()
-      let x = e.clientX - rect.left
-      let y = e.clientY - rect.top
-      let ctx =drawing.invisictx
-      // activate the border point-in-polygon algorithm
-      // get image data
-      // loop until we move right to get a pix value that is above certain threshold green
-      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0,3))
-      // query the invisible map
-      if (colToRegMap[JSON.stringify(pix)] != undefined) {
-        // make a little side box with the info in it
-        // take away a chunk of the image at that area
-        let rightDiv = document.createElement("div")
-        rightDiv.id = "tooltip"
-        rightDiv.innerHTML = `
-<h3>Selected Region
-  <p class="tooltip-child">
-        ${ colToRegMap[JSON.stringify(pix)]}
-  </p>
-  <p class="tooltip-child">
-activity value: hey this is missing!
-  </p>
-</h3>
-`
-        //append to canvas element if possible
-        drawing.innerHolder.append(rightDiv)
-        setTimeout(() => {
-          // replace the original pixels
-          rightDiv.remove()
-        }, 3500)
-      }
-    }
-    if (drawing.posFunc == undefined) {
-      let callGetPos = (e) => {
-        getPos(drawing, e)
-      }
-      drawing.posFunc = callGetPos
-      // store function once so that adding and removing is possible
-    } else {
-      drawing.can.removeEventListener("click", drawing.posFunc)
-    }
-    drawing.can.addEventListener("click", drawing.posFunc)
   }
   return ob
 }
@@ -490,7 +458,10 @@ let createCanvasDrawing = (ctrlDiv, canvasHolder, activationData, activityfilter
     drawing.begin()
     // only run slice selection when we have data 
     let rangeData = rangePrep()
+    // defaults for the range slider
     range.value = 20
+    range.min = 0
+    range.step = 1
     // make the range slider tied to slice lookup
     // start with sagittal
     let selected = "sagittal"
@@ -505,28 +476,42 @@ let createCanvasDrawing = (ctrlDiv, canvasHolder, activationData, activityfilter
         selected = "axial"
 
       }
+      range.max = rangeData.slices[selected].length - 1
     }
+    // force saggital to be selected at start by default
     canvasHolder.querySelector("#radiosagittal").checked = true
+    // grab measurement value from correct array provided the range value
     label.innerHTML = rangeData.measurements[selected][range.value]
-    sliceSelection.createImage(rangeData.slices[selected][5], drawing, activationData)
-    // set these for first time
+
+    // actual beginning of process to draw a brain slice, start at random position
+    // important stuff happens here! such as creation of globalinfo used right after
+    sliceSelection.createImage(rangeData.slices[selected][range.value], drawing, activationData)
+
+
+    // set the activity bounds at their lowest and highest possible values, manipulation will occur folling this
     activityfilter.setbounds(globalinfo.scanDatamin, globalinfo.scanDatamax)
-    // update filter bars
+
+    // when we adjust the range slider change the material in the canvas shown
     range.oninput = () => {
-      // call the filter on the activation data, and pass to create image
-      // set max and min to global min max
+      // call the filter on the activation data, and pass to create image, this function internally takes into account where the filter min and max interactive divs are positioned
       activationData = activityfilter.filter()
       // check for categorical filters, step through the list of the filter holder and apply the filter functions of each to the activation data
       categoricalFilters.filtersList.map(catfilter => {
         activationData = catfilter.filter(activationData)
       })
+
+
+      // determine which radio button is currently pressed
       getRadioSelected()
+
+
+
+      // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
       let name = rangeData.slices[selected][ind]
       label.innerHTML = rangeData.measurements[selected][range.value]
-      range.min = 0
-      range.max = rangeData.slices[selected].length - 1
-      range.step = 1
+
+      // draw the actual data on the canvas given the activation data and the slice to index the sliceData set of region boundaries
       sliceSelection.createImage(name, drawing, activationData)
     }
     // add events to the filter attached so it redraws canvas also
@@ -534,7 +519,7 @@ let createCanvasDrawing = (ctrlDiv, canvasHolder, activationData, activityfilter
   }
   return ob
 }
-// perhaps create a collection of columns filter that can give you the results of your data
+
 // this is a filter that can work on other columns
 
 let sepColumnFilter = (holder) => {
@@ -606,11 +591,12 @@ let activityFilter = (holder) => {
   ob.create = () => {
     // make a range slider that updates the self filter function which is called later on activity data
     let rangeWidth = holder.getBoundingClientRect()
-    ob.width = rangeWidth.width
     let min = makediv(rangeWidth.width / 4, holder)
     min.create()
     let max = makediv(rangeWidth.width / 4, holder)
     max.create()
+    // this si the amount of screen space that the filter div's can move, minus the width of the element
+    ob.width = (rangeWidth.width / 4) - 30
     // create labels
     ob.minlabel = document.createElement("p")
     ob.minlabel.id = "minlabel"
@@ -628,12 +614,12 @@ let activityFilter = (holder) => {
         min.element.style.left = `${maxleft}px`
         ob.min = maxleft
         // update min label
-        ob.minlabel.innerHTML = (maxleft * ob.absmax / ob.width).toFixed(5)
+        ob.minlabel.innerHTML = (maxleft * ob.absmax / (ob.width)).toFixed(5)
         return true
       }
       ob.min = v
-      // update min label
-      ob.minlabel.innerHTML = (v * ob.absmax / ob.width).toFixed(5)
+      // update min label and account for the divslider width
+      ob.minlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
       return false
     }
     max.additionalLimit = (v) => {
@@ -641,10 +627,10 @@ let activityFilter = (holder) => {
       if (v < minleft) {
         max.element.style.left = `${minleft}px`
         ob.max = minleft
-        ob.maxlabel.innerHTML = (minleft * ob.absmax / ob.width).toFixed(5)
+        ob.maxlabel.innerHTML = (minleft * ob.absmax / (ob.width)).toFixed(5)
         return true
       }
-      ob.maxlabel.innerHTML = (v * ob.absmax / ob.width).toFixed(5)
+      ob.maxlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
       ob.max = v
       return false
     }
@@ -813,28 +799,54 @@ let altColumnFilterHolder = () => {
 let selectorCreators = (data, holder, canvasHolder, id) => {
   let ob = {}
   ob.create = () => {
-    // create the activity selector
-    // piggy back on this to create the categorical filter too
-    let catFilter = altColumnFilterHolder()
+    // delete previous selection tools
+    let prevSelect = canvasHolder.querySelector("select")
+    if (prevSelect) {
+      prevSelect.remove()
+    }
+    let prevRange = canvasHolder.querySelector("#rangeslider")
+    if (prevRange) {
+      prevRange.remove()
+    }
+    let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
+    if (prevLabel) {
+      prevLabel.remove()
+    }
 
-    catFilter.create(canvasHolder, data)
-    let activitySelect = document.createElement("select")
+    // this is the selection element that is populated by the column names in the csv
+    let valueColumnSelect = document.createElement("select")
     for (let key of Object.keys(data.data)) {
       let option = document.createElement("option")
       option.value = key
       option.innerHTML = key
-      activitySelect.append(option)
+      valueColumnSelect.append(option)
     }
-    holder.append(activitySelect)
+    holder.append(valueColumnSelect)
+
     //create the activity filterselector
     let filter = activityFilter(holder)
     filter.create()
-    activitySelect.onchange = () => {
-      //csvData[id] = data.data[activitySelect.value]
-      csvRegionArray = data.data["regionName"]
+
+    // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
+    let catFilter = altColumnFilterHolder()
+    catFilter.create(canvasHolder, data)
+
+    // when we select a column as the value column of the activity data coloring we must grab the data from there and initiate the downstream draw
+    valueColumnSelect.onchange = () => {
+
+      //create the regionName, activity value object to pass along so drawLine has an easier time with filling
+
       // create the drawings from the slice data
       // parse the data into numeric
-      let numericData = data.data[activitySelect.value].map(e => parseFloat(e))
+      let numericData = data.data[valueColumnSelect.value].map(e => parseFloat(e))
+      regToValueMap = {}
+      csvRegionArray = data.data["regionName"].map((e, i) => {
+        // remove whitespace
+        let name = e.replace(/\s/, "")
+        // populate the region name and value array for drawLine time
+        regNameToValueMap[name] = numericData[i]
+        return name
+      })
       filter.addData(numericData)
       let drawing = createCanvasDrawing(holder, canvasHolder, numericData, filter, catFilter)
       drawing.run()
@@ -846,7 +858,6 @@ let selectorCreators = (data, holder, canvasHolder, id) => {
 
 let loader = (holder, canvasHolder, id) => {
   let ob = {}
-  // still a bit trigger happy
   ob.create = () => {
     // make the form that uploads the data
     let f
@@ -882,18 +893,6 @@ let loader = (holder, canvasHolder, id) => {
         let data = csvDataReader(text)
         data.parse()
         // delete the previous column selector
-        let prevSelect = canvasHolder.querySelector("select")
-        if (prevSelect) {
-          prevSelect.remove()
-        }
-        let prevRange = canvasHolder.querySelector("#rangeslider")
-        if (prevRange) {
-          prevRange.remove()
-        }
-        let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
-        if (prevLabel) {
-          prevLabel.remove()
-        }
         // create a select option for the columns of the data now
         let selectors = selectorCreators(data, holder, canvasHolder, id)
         selectors.create()
@@ -950,11 +949,3 @@ let addButton = () => {
   }
   return ob
 }
-
-async function Run() {
-  let res = await fetch("http://localhost:8080/src/GeoJson_Brains/total.json")
-  sliceData = await res.json()
-  let btn1 = addButton()
-  btn1.create()
-}
-Run()
