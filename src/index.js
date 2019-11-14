@@ -354,44 +354,6 @@ let pane = (number) => {
     ctrlDiv.className = "ctrlDiv"
     // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
 
-    let moverDiv = document.createElement("div")
-    let moveIcon = new Image()
-    moveIcon.src = "./src/moveicon.svg"
-    moveIcon.onload = () => {
-      // append to the moverDiv
-      // resize probably
-      moverDiv.append(moveIcon)
-    }
-    // create the mouse up,down and move events for dragging the panes around
-    let mouseMovePane = (e) => {
-      let topVal = e.clientY
-      let leftVal = e.clientX
-      paneDiv.style.top = `${topVal}px`
-      paneDiv.style.left = `${leftVal}px`
-    }
-    let mouseIsDown = false
-    let mouseDown = (e) => {
-      mouseIsDown = true
-      // make the holder position absolute
-      paneDiv.style.position = "absolute"
-      // move to the position that the mouse is at
-      let topVal = e.clientY
-      let leftVal = e.clientX
-      paneDiv.style.top = `${topVal}px`
-      paneDiv.style.left = `${leftVal}px`
-      // add the move event
-      document.body.addEventListener("mousemove", mouseMovePane)
-    }
-    moverDiv.addEventListener("mousedown", mouseDown)
-    let mouseUp = (e) => {
-      // remove the move listener 
-      if (mouseIsDown) {
-        document.body.removeEventListener("mousemove", mouseMovePane)
-      }
-    }
-    document.body.addEventListener("mouseup", mouseUp)
-    moverDiv.className = "panemover"
-    ctrlDiv.append(moverDiv)
     paneDiv.append(ctrlDiv)
     let mkradio = (view, radionum) => {
       let rad = document.createElement("input")

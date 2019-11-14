@@ -1,6 +1,9 @@
+ @import url('https://fonts.googleapis.com/css?family=Lato&display=swap');
 body {
   height:100vw;
+  font-family: 'Lato';
   font-size:1.5vh;
+
 }
 /*
 .pane {
@@ -8,7 +11,6 @@ body {
   margin:0 auto;
 }
 */
-
 .filterLabel {
   display:inline;
 
@@ -20,10 +22,16 @@ body {
   content:")";
 }
 .ctrlDiv {
-  background:gray;
+  width:80%;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-evenly;
+  border: gray solid 5px;
+  border-radius: 8px;
 }
 .radcontainer{
   display:inline;
+  font-size:21px;
 }
 #tooltip {
   display:inline-block;
