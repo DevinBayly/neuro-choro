@@ -1,13 +1,24 @@
-
-let brain
-let globalinfo
-let csvRegionArray
-let regNameToValueMap = {}
-// slicedata
-// maps that support the click for region name usecase
-let colToRegMap = {}
-let regToColMap = {}
-
+class Application {
+  constructor() {
+    this.brain ={}
+    this.globalinfo = {}
+    this.csvRegionArray ={}
+    this.regNameToValueMap = {}
+    // slicedata
+    // maps that support the click for region name usecase
+    this.colToRegMap = {}
+    this.regToColMap = {}
+  }
+  async fetchData() {
+    // fetch the data from server on iodide this will be a local link
+    this.res = await fetch("http://localhost:8080/src/GeoJson_HCP-MMP1/total_small_parsed.json")
+    this.sliceData = await res.json()
+  }
+  startup() {
+    this.btn1 = addButton()
+    btn1.create()
+  }
+}
 
 // this exists to separate the invisible color canvas regions so that clicks upon the screen can  resolve to a color string that can confidently identify the region that is clicked
 let color_collection = (rnum) => {
@@ -938,11 +949,3 @@ let addButton = () => {
   }
   return ob
 }
-
-async function Run() {
-  let res = await fetch("http://localhost:8080/src/GeoJson_HCP-MMP1/total_small_parsed.json")
-  sliceData = await res.json()
-  let btn1 = addButton()
-  btn1.create()
-}
-Run()
