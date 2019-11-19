@@ -243,22 +243,8 @@ let setup = (lwidth, paneHolder) => {
   return ob
 }
 
-let dataBind = (drawing, data_to_bind, activationData) => {
-  // drawing has can and ctx attributes
-  // find a way get to the data we need here
-  for (let pline of data_to_bind.geometry.coordinates) {
-    //let data_bound = {coords:line,properties
-    //make copy of line data and bind in the region name
-    let drawingData = {
-      points: pline,
-      region: data_to_bind.properties.regionName
-    }
-    let line = drawLine(drawingData, drawing, activationData)
-    line.draw()
-  }
-}
 
-let featurePass = (drawing, upperData, activationData) => {
+let drawToCanvas = (drawing, upperData, activationData) => {
   let ob = {}
   // establish a color map for the invisible canvas
   let cc = color_collection(upperData.features.length)
@@ -272,7 +258,19 @@ let featurePass = (drawing, upperData, activationData) => {
 
   ob.mapFeatures = () => {
     for (let feature of upperData.features) {
-      let db = dataBind(drawing, feature, activationData)
+      // drawing has can and ctx attributes
+      // find a way get to the data we need here
+      // almost convinced there will only be one loop performed here
+      for (let pline of feature.geometry.coordinates) {
+        //let data_bound = {coords:line,properties
+        //make copy of line data and bind in the region name
+        let drawingData = {
+          points: pline,
+          region: feature.properties.regionName
+        }
+        let line = drawLine(drawingData, drawing, activationData)
+        line.draw()
+      }
     }
   }
   return ob
@@ -335,7 +333,8 @@ let sliceSelect = (paneHolder) => {
     globalinfo = globals(activationData)
     drawing.resize(500 * globalinfo.ratio, 500, 20)
     // data height vs width ration
-    let allfeatures = featurePass(drawing, brain, activationData)
+    // call it draw on Canvas
+    let allfeatures = drawToCanvas(drawing, brain, activationData)
     allfeatures.mapFeatures()
   }
   return ob
@@ -354,6 +353,44 @@ let pane = (number) => {
     ctrlDiv.className = "ctrlDiv"
     // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
 
+    let moverDiv = document.createElement("div")
+    let moveIcon = new Image()
+    moveIcon.src = "./src/moveicon.svg"
+    moveIcon.onload = () => {
+      // append to the moverDiv
+      // resize probably
+      moverDiv.append(moveIcon)
+    }
+    // create the mouse up,down and move events for dragging the panes around
+    let mouseMovePane = (e) => {
+      let topVal = e.clientY
+      let leftVal = e.clientX
+      paneDiv.style.top = `${topVal}px`
+      paneDiv.style.left = `${leftVal}px`
+    }
+    let mouseIsDown = false
+    let mouseDown = (e) => {
+      mouseIsDown = true
+      // make the holder position absolute
+      paneDiv.style.position = "absolute"
+      // move to the position that the mouse is at
+      let topVal = e.clientY
+      let leftVal = e.clientX
+      paneDiv.style.top = `${topVal}px`
+      paneDiv.style.left = `${leftVal}px`
+      // add the move event
+      document.body.addEventListener("mousemove", mouseMovePane)
+    }
+    moverDiv.addEventListener("mousedown", mouseDown)
+    let mouseUp = (e) => {
+      // remove the move listener 
+      if (mouseIsDown) {
+        document.body.removeEventListener("mousemove", mouseMovePane)
+      }
+    }
+    document.body.addEventListener("mouseup", mouseUp)
+    moverDiv.className = "panemover"
+    ctrlDiv.append(moverDiv)
     paneDiv.append(ctrlDiv)
     let mkradio = (view, radionum) => {
       let rad = document.createElement("input")
