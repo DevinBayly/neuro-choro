@@ -29,6 +29,32 @@ class Application {
     document.body.append(this.btndiv)
   }
 
+  altColumnFilterHolder() {
+    let ob = {}
+    ob.create = (holder, data) => {
+      // attributes 
+      //  data
+      ob.data = data
+      //  non-activity column filters
+      ob.filtersList = []
+      // put in the space next to the canvas
+      let filterDiv = document.createElement("div")
+      holder.append(filterDiv)
+      let createFilterButton = document.createElement("button")
+      createFilterButton.innerHTML = "Add Alt column filter"
+      createFilterButton.addEventListener("click", () => {
+        // call the create filter event, pass in the holder's data element,
+        // append it to the holders
+        let columnfilter = altColumnFilter()
+        columnfilter.create(filterDiv, ob.data)
+        ob.filtersList.push(columnfilter)
+      })
+      holder.append(createFilterButton)
+    }
+    // run categorical filters on the object's data
+    // pass that data to the drawing tool so that it doesn't have to re filter every single time the other aspects of the program get used
+    return ob
+  }
   pane() {
     // increment the pane number
     this.count += 1
@@ -232,6 +258,145 @@ class Application {
       drawing.run()
     }
   }
+  activityFilter() {
+    let ob = {}
+    ob.min = undefined
+    ob.max = undefined
+    ob.addData = (data) => {
+      ob.data = data
+    }
+    ob.setbounds = (absmin, absmax) => {
+      ob.absmin = absmin
+      ob.absmax = absmax
+    }
+    ob.create = () => {
+      // make a range slider that updates the self filter function which is called later on activity data
+      let rangeWidth = holder.getBoundingClientRect()
+      let min = makediv(rangeWidth.width / 4, holder)
+      min.create()
+      let max = makediv(rangeWidth.width / 4, holder)
+      max.create()
+      // this si the amount of screen space that the filter div's can move, minus the width of the element
+      ob.width = (rangeWidth.width / 4) - 30
+      // create labels
+      ob.minlabel = document.createElement("p")
+      ob.minlabel.id = "minlabel"
+      ob.minlabel.className = "filterLabel"
+      ob.maxlabel = document.createElement("p")
+      ob.minlabel.id = "maxlabel"
+      ob.maxlabel.className = "filterLabel"
+      let labelholder = document.createElement("div")
+      labelholder.id = "labelholder"
+      // prevent sliders from going over each other
+      min.additionalLimit = (v) => {
+        // stay below the max point
+        let maxleft = parseInt(max.element.style.left)
+        if (v > maxleft) {
+          min.element.style.left = `${maxleft}px`
+          ob.min = maxleft
+          // update min label
+          ob.minlabel.innerHTML = (maxleft * ob.absmax / (ob.width)).toFixed(5)
+          return true
+        }
+        ob.min = v
+        // update min label and account for the divslider width
+        ob.minlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
+        return false
+      }
+      max.additionalLimit = (v) => {
+        let minleft = parseInt(min.element.style.left)
+        if (v < minleft) {
+          max.element.style.left = `${minleft}px`
+          ob.max = minleft
+          ob.maxlabel.innerHTML = (minleft * ob.absmax / (ob.width)).toFixed(5)
+          return true
+        }
+        ob.maxlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
+        ob.max = v
+        return false
+      }
+      labelholder.append(ob.minlabel, ob.maxlabel)
+      holder.append(min.element)
+      holder.append(max.element)
+      holder.append(labelholder)
+      // once placed, set this to keep in correct spot, make them sit on same line
+      max.element.style.top = `-30px` // overlap the element with the other
+      max.element.style.left = "50px"
+    }
+    ob.filter = () => {
+      // calculate the actual min activity value
+      let activitymin = ob.absmax * ob.min / ob.width
+      let activitymax = ob.absmax * ob.max / ob.width
+      return ob.data.map(e => {
+        if (e > activitymin && e < activitymax) {
+          return e
+        }
+        return NaN
+      })
+    }
+    return ob
+  }
+  drawLine(linedata, drawing, activationData) {
+    //linedata  = {points,region}
+    let ob = {}
+    // need canvas ref
+    //create interpolator
+    //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
+    let xinterp = interpolator()
+    xinterp.setup(globalinfo.globals[0], 0 + 10, globalinfo.globals[2], 500 + 10)
+    let yinterp = interpolator()
+    yinterp.setup(globalinfo.globals[1], (500 + 10) * globalinfo.ratio, globalinfo.globals[3], 10)// extra 10is the margin split intwo
+    //TODO find better version of how to structure so that the margin can be programmatically set
+    ob.draw = () => {
+      drawing.ctx.beginPath()
+      drawing.invisictx.beginPath()
+      let red = {
+        r: 255,
+        g: 0,
+        b: 0,
+      }
+      let yellow = {
+        r: 128,
+        g: 128,
+        b: 128
+      }
+      let first = linedata.points[0]
+      let x = xinterp.calc(first[0])
+      let y = yinterp.calc(first[1])
+      drawing.ctx.moveTo(x, y)
+      drawing.invisictx.moveTo(x, y)
+      for (let i = 1; i < linedata.points.length; i++) {
+        let pt = linedata.points[i]
+        let x = xinterp.calc(pt[0])
+        let y = yinterp.calc(pt[1])
+        drawing.ctx.lineTo(x, y)
+        drawing.invisictx.lineTo(x, y)
+      }
+      drawing.ctx.closePath()
+      drawing.invisictx.closePath()
+      if (regNameToValueMap != undefined) {
+        if (regNameToValueMap[linedata.region]) {
+          let scanData = regNameToValueMap[linedata.region]
+          let t = globalinfo.scanScalar.calc(scanData)
+          let lerpc = LerpCol(yellow, red, t, 2)
+          drawing.ctx.fillStyle = lerpc
+          drawing.ctx.fill()
+          // query the region to color map
+          activity = true
+        }
+      } else {
+        // leave the section gray
+        drawing.ctx.fillStyle = "gray";
+        drawing.ctx.fill();
+      }
+      // color on the invisible canvas, this happens regardless of activity
+      drawing.invisictx.fillStyle = `rgb(${regToColMap[linedata.region][0]},${regToColMap[linedata.region][1]},${regToColMap[linedata.region][2]})`
+      drawing.invisictx.fill()
+
+
+    }
+    return ob
+  }
 }
 
 // things that don't depuend on internal values are left as helper functions on the outside
@@ -303,67 +468,7 @@ let LerpCol = (c1, c2, t, jitter) => {
 
 
 
-let drawLine = (linedata, drawing, activationData) => {
-  //linedata  = {points,region}
-  let ob = {}
-  // need canvas ref
-  //create interpolator
-  //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
-  let xinterp = interpolator()
-  xinterp.setup(globalinfo.globals[0], 0 + 10, globalinfo.globals[2], 500 + 10)
-  let yinterp = interpolator()
-  yinterp.setup(globalinfo.globals[1], (500 + 10) * globalinfo.ratio, globalinfo.globals[3], 10)// extra 10is the margin split intwo
-  //TODO find better version of how to structure so that the margin can be programmatically set
-  ob.draw = () => {
-    drawing.ctx.beginPath()
-    drawing.invisictx.beginPath()
-    let red = {
-      r: 255,
-      g: 0,
-      b: 0,
-    }
-    let yellow = {
-      r: 128,
-      g: 128,
-      b: 128
-    }
-    let first = linedata.points[0]
-    let x = xinterp.calc(first[0])
-    let y = yinterp.calc(first[1])
-    drawing.ctx.moveTo(x, y)
-    drawing.invisictx.moveTo(x, y)
-    for (let i = 1; i < linedata.points.length; i++) {
-      let pt = linedata.points[i]
-      let x = xinterp.calc(pt[0])
-      let y = yinterp.calc(pt[1])
-      drawing.ctx.lineTo(x, y)
-      drawing.invisictx.lineTo(x, y)
-    }
-    drawing.ctx.closePath()
-    drawing.invisictx.closePath()
-    if (regNameToValueMap != undefined) {
-      if (regNameToValueMap[linedata.region]) {
-        let scanData = regNameToValueMap[linedata.region]
-        let t = globalinfo.scanScalar.calc(scanData)
-        let lerpc = LerpCol(yellow, red, t, 2)
-        drawing.ctx.fillStyle = lerpc
-        drawing.ctx.fill()
-        // query the region to color map
-        activity = true
-      }
-    } else {
-      // leave the section gray
-      drawing.ctx.fillStyle = "gray";
-      drawing.ctx.fill();
-    }
-    // color on the invisible canvas, this happens regardless of activity
-    drawing.invisictx.fillStyle = `rgb(${regToColMap[linedata.region][0]},${regToColMap[linedata.region][1]},${regToColMap[linedata.region][2]})`
-    drawing.invisictx.fill()
 
-
-  }
-  return ob
-}
 
 let setup = (lwidth, paneHolder) => {
   let ob = {}
@@ -671,84 +776,7 @@ let pane = (number) => {
   }
 
 
-  let activityFilter = (holder) => {
-    let ob = {}
-    ob.min = undefined
-    ob.max = undefined
-    ob.addData = (data) => {
-      ob.data = data
-    }
-    ob.setbounds = (absmin, absmax) => {
-      ob.absmin = absmin
-      ob.absmax = absmax
-    }
-    ob.create = () => {
-      // make a range slider that updates the self filter function which is called later on activity data
-      let rangeWidth = holder.getBoundingClientRect()
-      let min = makediv(rangeWidth.width / 4, holder)
-      min.create()
-      let max = makediv(rangeWidth.width / 4, holder)
-      max.create()
-      // this si the amount of screen space that the filter div's can move, minus the width of the element
-      ob.width = (rangeWidth.width / 4) - 30
-      // create labels
-      ob.minlabel = document.createElement("p")
-      ob.minlabel.id = "minlabel"
-      ob.minlabel.className = "filterLabel"
-      ob.maxlabel = document.createElement("p")
-      ob.minlabel.id = "maxlabel"
-      ob.maxlabel.className = "filterLabel"
-      let labelholder = document.createElement("div")
-      labelholder.id = "labelholder"
-      // prevent sliders from going over each other
-      min.additionalLimit = (v) => {
-        // stay below the max point
-        let maxleft = parseInt(max.element.style.left)
-        if (v > maxleft) {
-          min.element.style.left = `${maxleft}px`
-          ob.min = maxleft
-          // update min label
-          ob.minlabel.innerHTML = (maxleft * ob.absmax / (ob.width)).toFixed(5)
-          return true
-        }
-        ob.min = v
-        // update min label and account for the divslider width
-        ob.minlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
-        return false
-      }
-      max.additionalLimit = (v) => {
-        let minleft = parseInt(min.element.style.left)
-        if (v < minleft) {
-          max.element.style.left = `${minleft}px`
-          ob.max = minleft
-          ob.maxlabel.innerHTML = (minleft * ob.absmax / (ob.width)).toFixed(5)
-          return true
-        }
-        ob.maxlabel.innerHTML = (v * ob.absmax / (ob.width)).toFixed(5)
-        ob.max = v
-        return false
-      }
-      labelholder.append(ob.minlabel, ob.maxlabel)
-      holder.append(min.element)
-      holder.append(max.element)
-      holder.append(labelholder)
-      // once placed, set this to keep in correct spot, make them sit on same line
-      max.element.style.top = `-30px` // overlap the element with the other
-      max.element.style.left = "50px"
-    }
-    ob.filter = () => {
-      // calculate the actual min activity value
-      let activitymin = ob.absmax * ob.min / ob.width
-      let activitymax = ob.absmax * ob.max / ob.width
-      return ob.data.map(e => {
-        if (e > activitymin && e < activitymax) {
-          return e
-        }
-        return NaN
-      })
-    }
-    return ob
-  }
+
 
   // the categorical filter option
   // ?? when should I pass in the data for this??
@@ -862,96 +890,9 @@ let pane = (number) => {
 
   //  there will be one filter categorical for each pane, and within it there will be options to create a 
   //
-  let altColumnFilterHolder = () => {
-    let ob = {}
-    ob.create = (holder, data) => {
-      // attributes 
-      //  data
-      ob.data = data
-      //  non-activity column filters
-      ob.filtersList = []
-      // put in the space next to the canvas
-      let filterDiv = document.createElement("div")
-      holder.append(filterDiv)
-      let createFilterButton = document.createElement("button")
-      createFilterButton.innerHTML = "Add Alt column filter"
-      createFilterButton.addEventListener("click", () => {
-        // call the create filter event, pass in the holder's data element,
-        // append it to the holders
-        let columnfilter = altColumnFilter()
-        columnfilter.create(filterDiv, ob.data)
-        ob.filtersList.push(columnfilter)
-      })
-      holder.append(createFilterButton)
-    }
-    // run categorical filters on the object's data
-    // pass that data to the drawing tool so that it doesn't have to re filter every single time the other aspects of the program get used
-    return ob
+
+
+  let window.onload = () => {
+    let app = new Application()
+    app.fetchData()
   }
-
-
-  let selectorCreators = (data, holder, canvasHolder, id) => {
-    let ob = {}
-    ob.create = () => {
-      // delete previous selection tools
-      let prevSelect = canvasHolder.querySelector("select")
-      if (prevSelect) {
-        prevSelect.remove()
-      }
-      let prevRange = canvasHolder.querySelector("#rangeslider")
-      if (prevRange) {
-        prevRange.remove()
-      }
-      let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
-      if (prevLabel) {
-        prevLabel.remove()
-      }
-
-      // this is the selection element that is populated by the column names in the csv
-      let valueColumnSelect = document.createElement("select")
-      for (let key of Object.keys(data.data)) {
-        let option = document.createElement("option")
-        option.value = key
-        option.innerHTML = key
-        valueColumnSelect.append(option)
-      }
-      holder.append(valueColumnSelect)
-
-      //create the activity filterselector
-      let filter = activityFilter(holder)
-      filter.create()
-
-      // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
-      let catFilter = altColumnFilterHolder()
-      catFilter.create(canvasHolder, data)
-
-      // when we select a column as the value column of the activity data coloring we must grab the data from there and initiate the downstream draw
-      valueColumnSelect.onchange = () => {
-
-        //create the regionName, activity value object to pass along so drawLine has an easier time with filling
-
-        // create the drawings from the slice data
-        // parse the data into numeric
-        let numericData = data.data[valueColumnSelect.value].map(e => parseFloat(e))
-        regToValueMap = {}
-        csvRegionArray = data.data["regionName"].map((e, i) => {
-          // remove whitespace
-          let name = e.replace(/\s/, "")
-          // populate the region name and value array for drawLine time
-          regNameToValueMap[name] = numericData[i]
-          return name
-        })
-        filter.addData(numericData)
-        let drawing = createCanvasDrawing(holder, canvasHolder, numericData, filter, catFilter)
-        drawing.run()
-      }
-
-    }
-    return ob
-  }
-
-  let
-    window.onload = () => {
-      let app = new Application()
-      app.fetchData()
-    }
