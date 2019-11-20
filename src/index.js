@@ -535,7 +535,7 @@ let setup = (lwidth, paneHolder) => {
 }
 
 
-let canvasDraw = (drawing, upperData, activationData) => {
+let drawToCanvas = (drawing, upperData, activationData) => {
   let ob = {}
   // establish a color map for the invisible canvas
   let cc = color_collection(upperData.features.length)
@@ -549,14 +549,20 @@ let canvasDraw = (drawing, upperData, activationData) => {
 
   ob.mapFeatures = () => {
     for (let feature of upperData.features) {
-      //let data_bound = {coords:line,properties
-      //make copy of line data and bind in the region name
-      let drawingData = {
-        points: feature.geometry.coordinates[0], // so far there haven't been any other coordinates in the array
-        region: feature.geometry.properties.regionName
+
+      // drawing has can and ctx attributes
+      // find a way get to the data we need here
+      // almost convinced there will only be one loop performed here
+      for (let pline of feature.geometry.coordinates) {
+        //let data_bound = {coords:line,properties
+        //make copy of line data and bind in the region name
+        let drawingData = {
+          points: pline,
+          region: feature.properties.regionName
+        }
+        let line = drawLine(drawingData, drawing, activationData)
+        line.draw()
       }
-      let line = drawLine(drawingData, drawing, activationData)
-      line.draw()
     }
   }
 
@@ -622,7 +628,8 @@ let sliceSelect = (paneHolder) => {
     globalinfo = globals(activationData)
     drawing.resize(500 * globalinfo.ratio, 500, 20)
     // data height vs width ration
-    let allfeatures = canvasDraw(drawing, brain, activationData)
+    // call it draw on Canvas
+    let allfeatures = drawToCanvas(drawing, brain, activationData)
     allfeatures.mapFeatures()
   }
   return ob
@@ -892,7 +899,7 @@ let pane = (number) => {
   //
 
 
-  let window.onload = () => {
+  window.onload = () => {
     let app = new Application()
     app.fetchData()
   }
