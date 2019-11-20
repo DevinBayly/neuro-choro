@@ -77,12 +77,7 @@ class CtrlOp {
     this.createSlider()
 
     // create the activity and category filters
-    this.createFilters()
 
-    this.ctrlDiv.addEventListener("valcolchange",()=> console.log("changed val column"))
-    this.ctrlDiv.addEventListener("sliderchange",()=> console.log("slider moved"))
-    this.ctrlDiv.addEventListener("activityfilterchange",()=> console.log("moved activity filter"))
-    this.ctrlDiv.addEventListener("radiobuttonchanged",()=>console.log("changed the radio button"))
 
   }
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
@@ -139,7 +134,7 @@ class CtrlOp {
       // also update the max for the slider
       this.slider.max = this.sliderSlices[this.radioSelected].length - 1
       let e = new Event("radiobuttonchanged")
-      this.rad.dispatchEvent(e)
+      this.ctrlDiv.dispatchEvent(e)
     })
   }
   // this is the part for creating the column selection area
@@ -160,6 +155,10 @@ class CtrlOp {
       // parse the data into numeric
       let numericData = this.data[valueColumnSelect.value].map(e => parseFloat(e))
       this.coldata = numericData
+
+      // establish filters for the selected column of data
+      this.createFilters()
+
       // trigger a valcolchange event
       // this will make the filters update themselves, and make the canvas redraw the 
       let e = new Event("valcolchange")
@@ -185,8 +184,8 @@ class CtrlOp {
       }
     }
     let sortfunc = (x, y) => {
-      let xmm = parseInt(x.match(/(-?\d+)(mm)?\..*json/)[1])
-      let ymm = parseInt(y.match(/(-?\d+)(mm)?\..*json/)[1])
+      let xmm = parseInt(x.match(/(-?\d+\.?\d*?)(mm)?/)[1])
+      let ymm = parseInt(y.match(/(-?\d+\.?\d*?)(mm)?/)[1])
       return xmm - ymm
     }
     slicesByView.axial.sort(sortfunc)
@@ -196,13 +195,13 @@ class CtrlOp {
     // get the array of values
     this.sliderMeasurements = {}
     this.sliderMeasurements.axial = slicesByView.axial.map(sl => {
-      return (sl.match(/(-?\d+mm)?.json/)[1])
+      return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
     })
     this.sliderMeasurements.sagittal = slicesByView.sagittal.map(sl => {
-      return (sl.match(/(-?\d+mm)?.json/)[1])
+      return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
     })
     this.sliderMeasurements.coronal = slicesByView.coronal.map(sl => {
-      return (sl.match(/(-?\d+mm)?.json/)[1])
+      return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
     })
   }
   // deals with the boundary data 
@@ -228,7 +227,7 @@ class CtrlOp {
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
       // having trouble getting the
-      let name = this.sliderSlices.slices[this.radioSelected][ind]
+      let name = this.sliderSlices[this.radioSelected][ind]
       this.sliderlabel.innerHTML = this.sliderMeasurements[this.radioSelected][ind]
       // provide the name of the slice to the canvas drawing machinery
       // ....
@@ -238,7 +237,10 @@ class CtrlOp {
   }
   // prepare the filters
   createFilters() {
-    this.activityFilter = new ActivityFilter(this.ctrlDiv,this.coldata)
+    if (this.activityFilter) {
+      this.activityFilter.remove()
+    }
+    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.coldata)
     this.activityFilter.init()
   }
 
@@ -262,11 +264,25 @@ class ActivityFilter {
     this.ctrlDiv = ctrlDiv
     this.data = data
   }
+  //remove the previous filter elements
+  remove() {
+    this.minlabel.remove()
+    this.maxlabel.remove()
+    this.maxel.element.remove()
+    this.minel.element.remove()
+  }
   init() {
     // make a range slider that updates the self filter function which is called later on activity data
     let rangeWidth = this.ctrlDiv.getBoundingClientRect()
     let min = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
     let max = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
+
+    // establish the absmin and absmax of the column data
+    // raise hell if the data can't be sorted this way
+    this.setbounds(Math.min(...this.data),Math.max(...this.data))
+
+    this.maxel =max
+    this.minel =min
     // this si the amount of screen space that the filter div's can move, minus the width of the element
     this.width = (rangeWidth.width / 4) - 30
     // create labels
@@ -364,7 +380,7 @@ class divMaker {
       document.removeEventListener("mouseup", cancelMove)
       // emit event that canvas must redraw
       let filterEvent = new Event("activityfilterchange")
-      this.element.dispatchEvent(filterEvent)
+      window.dispatchEvent(filterEvent)
     }
     let click = () => {
       document.addEventListener("mousemove", move)
