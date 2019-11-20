@@ -68,7 +68,7 @@ class CtrlOp {
     this.radioSelected = "sagittal" // default
 
     // instantiate loader
-    this.loader()
+    await this.loader()
 
     // create the, column selectors, sliders, and the filters
     this.createSelector()
@@ -83,7 +83,7 @@ class CtrlOp {
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
   async loader() {
     // make the form that uploads the data
-    fetch("./src/HCP-MMP1_List.csv").then(
+    await fetch("./src/HCP-MMP1_List.csv").then(
       res => {
         return res.text()
       }
@@ -91,7 +91,7 @@ class CtrlOp {
       this.csvDataReader(text)
     })
     // fetch the region boundary data
-    fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
+    await fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
       this.regionBoundaryData = j
     })
   }
@@ -216,8 +216,8 @@ class CtrlOp {
     this.prepRangeData()
     // add the on input event emitter  for when slider moves
     // 
-    this.range.oninput = () => {
-      this.selectedSliceIndex = parseInt(this.range.value)
+    this.slider.oninput = () => {
+      this.selectedSliceIndex = parseInt(this.slider.value)
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
       // having trouble getting the
@@ -231,7 +231,8 @@ class CtrlOp {
   }
   // prepare the filters
   createFilters() {
-
+    this.activityFilter = new ActivityFilter(this.ctrlDiv,this.coldata)
+    this.activityFilter.init()
   }
 
   other() {
@@ -355,8 +356,8 @@ class divMaker {
       document.removeEventListener("mousemove", move)
       document.removeEventListener("mouseup", cancelMove)
       // emit event that canvas must redraw
-      let e = new Event("activityfilterchange")
-      this.element.dispatchEvent(e)
+      let filterEvent = new Event("activityfilterchange")
+      this.element.dispatchEvent(filterEvent)
     }
     let click = () => {
       document.addEventListener("mousemove", move)
