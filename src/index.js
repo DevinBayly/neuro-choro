@@ -79,6 +79,11 @@ class CtrlOp {
     // create the activity and category filters
     this.createFilters()
 
+    this.ctrlDiv.addEventListener("valcolchange",()=> console.log("changed val column"))
+    this.ctrlDiv.addEventListener("sliderchange",()=> console.log("slider moved"))
+    this.ctrlDiv.addEventListener("activityfilterchange",()=> console.log("moved activity filter"))
+    this.ctrlDiv.addEventListener("radiobuttonchanged",()=>console.log("changed the radio button"))
+
   }
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
   async loader() {
@@ -133,6 +138,8 @@ class CtrlOp {
       this.radioSelected = rad.value
       // also update the max for the slider
       this.slider.max = this.sliderSlices[this.radioSelected].length - 1
+      let e = new Event("radiobuttonchanged")
+      this.rad.dispatchEvent(e)
     })
   }
   // this is the part for creating the column selection area
