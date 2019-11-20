@@ -22,7 +22,7 @@ class Application {
       await this.ctrlop.init()
 
       // create the canvas
-      this.can = new Canvas(newPane.paneDiv)
+      this.can = new Canvas(newPane.paneDiv, this.ctrlop.data)
 
       this.panes.push(newPane)
     }
@@ -66,7 +66,10 @@ class CtrlOp {
     this.mkradio("coronal")
     // instantiate loader
     this.loader()
-    // at the end pane will get data and give it to the canvas
+
+    // create the, column selectors, sliders, and the filters
+    this.createSelector()
+
   }
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
   async loader() {
@@ -77,6 +80,10 @@ class CtrlOp {
       }
     ).then(text => {
       this.csvDataReader(text)
+    })
+    // fetch the region boundary data
+    fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
+      this.regionBoundaryData = j
     })
   }
   csvDataReader(csvRawString) {
@@ -113,12 +120,130 @@ class CtrlOp {
     div.append(label)
     this.ctrlDiv.append(div)
   }
+  // this is the part for creating the column selection area
+  // deals with the csv data
+  createSelector() {
+    // delete previous selection tools
+
+    // this is the selection element that is populated by the column names in the csv
+    let valueColumnSelect = document.createElement("select")
+    for (let key of Object.keys(this.data)) {
+      let option = document.createElement("option")
+      option.value = key
+      option.innerHTML = key
+      valueColumnSelect.append(option)
+    }
+    this.ctrlDiv.append(valueColumnSelect)
+    valueColumnSelect.onchange = () => {
+      // parse the data into numeric
+      let numericData = this.data[valueColumnSelect.value].map(e => parseFloat(e))
+      this.coldata = numericData
+      // trigger a valcolchange event
+      // this will make the filters update themselves, and make the canvas redraw the 
+      let e = new Event("valcolchange")
+      // update the canvas columdata somehow
+      this.ctrlDiv.dispatchEvent(e)
+    }
+  }
+  prepRangeData() {
+    let slicesByView = {
+      "sagittal": [],
+      "axial": [],
+      "coronal": []
+    }
+    for (let n in this.regionBoundaryData) {
+      if (n.search(/cor/) == 0) {
+        slicesByView["coronal"].push(n)
+      }
+      if (n.search(/sag/) == 0) {
+        slicesByView["sagittal"].push(n)
+      }
+      if (n.search(/ax/) == 0) {
+        slicesByView["axial"].push(n)
+      }
+    }
+    let sortfunc = (x, y) => {
+      let xmm = parseInt(x.match(/(-?\d+)(mm)?\..*json/)[1])
+      let ymm = parseInt(y.match(/(-?\d+)(mm)?\..*json/)[1])
+      return xmm - ymm
+    }
+    slicesByView.axial.sort(sortfunc)
+    slicesByView.sagittal.sort(sortfunc)
+    slicesByView.coronal.sort(sortfunc)
+    this.sliderSlices = slicesByView
+    // get the array of values
+    ob.sliderMeasurements = {}
+    ob.sliderMeasurements.axial = slicesByView.axial.map(sl => {
+      return (sl.match(/(-?\d+mm)?.json/)[1])
+    })
+    ob.sliderMeasurements.sagittal = slicesByView.sagittal.map(sl => {
+      return (sl.match(/(-?\d+mm)?.json/)[1])
+    })
+    ob.sliderMeasurements.coronal = slicesByView.coronal.map(sl => {
+      return (sl.match(/(-?\d+mm)?.json/)[1])
+    })
+  }
+  // deals with the boundary data 
+  createSlider() {
+    //initiate the slider
+    let range = document.createElement("input")
+    range.id = "rangeslider"
+    let label = document.createElement("label")
+    label.id = "rangesliderlabel"
+    range.name = "slicerange"
+    range.type = "range"
+    label.setAttribute("for", "slicerange")
+    this.ctrlDiv.append(range)
+    this.ctrlDiv.append(label)
+    this.slider = range
+    this.sliderlabel = label
+    // add the on change event emitter 
+    // 
+    this.range.oninput = () => {
+      this.selectedSlice = this.range.value
+      // call the filter on the activation data, and pass to create image, this function internally takes into account where the filter min and max interactive divs are positioned
+      activationData = activityfilter.filter()
+      // check for categorical filters, step through the list of the filter holder and apply the filter functions of each to the activation data
+      categoricalFilters.filtersList.map(catfilter => {
+        activationData = catfilter.filter(activationData)
+      })
+
+
+      // determine which radio button is currently pressed
+      getRadioSelected()
+
+
+
+      // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
+      let ind = parseInt(range.value)
+      let name = rangeData.slices[selected][ind]
+      label.innerHTML = rangeData.measurements[selected][range.value]
+
+      // draw the actual data on the canvas given the activation data and the slice to index the sliceData set of region boundaries
+      sliceSelection.createImage(name, drawing, activationData)
+    }
+
+  }
+  other() {
+
+    //create the activity filterselector
+    let filter = activityFilter(holder)
+    filter.create()
+
+    // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
+    let catFilter = altColumnFilterHolder()
+    catFilter.create(canvasHolder, data)
+
+    // when we select a column as the value column of the activity data coloring we must grab the data from there and initiate the downstream draw
+  }
 }
 
 class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
-  constructor() {
-    this.canvas =document.createElement("canvas")
+  constructor(paneDiv, data) {
+    this.canvas = document.createElement("canvas")
+    // other versions of teh data will be around later,
+    this.initialData = data
   }
 }
 
@@ -965,7 +1090,7 @@ class Canvas {
 //  //
 //
 
-  window.onload = async () => {
-    let app = new Application()
-    await app.addButton()
-  }
+window.onload = async () => {
+  let app = new Application()
+  await app.addButton()
+}
