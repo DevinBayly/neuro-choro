@@ -64,11 +64,20 @@ class CtrlOp {
     this.mkradio("axial")
     this.mkradio("sagittal")
     this.mkradio("coronal")
+    // selected is the radio button we have selected
+    this.radioSelected = "sagittal" // default
+
     // instantiate loader
     this.loader()
 
     // create the, column selectors, sliders, and the filters
     this.createSelector()
+
+    // create the brain slice slider
+    this.createSlider()
+
+    // create the activity and category filters
+    this.createFilters()
 
   }
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
@@ -119,6 +128,12 @@ class CtrlOp {
     div.append(rad)
     div.append(label)
     this.ctrlDiv.append(div)
+    // add this.radioSelected on change
+    rad.addEventListener("click", () => {
+      this.radioSelected = rad.value
+      // also update the max for the slider
+      this.slider.max = this.sliderSlices[this.radioSelected].length - 1
+    })
   }
   // this is the part for creating the column selection area
   // deals with the csv data
@@ -172,14 +187,14 @@ class CtrlOp {
     slicesByView.coronal.sort(sortfunc)
     this.sliderSlices = slicesByView
     // get the array of values
-    ob.sliderMeasurements = {}
-    ob.sliderMeasurements.axial = slicesByView.axial.map(sl => {
+    this.sliderMeasurements = {}
+    this.sliderMeasurements.axial = slicesByView.axial.map(sl => {
       return (sl.match(/(-?\d+mm)?.json/)[1])
     })
-    ob.sliderMeasurements.sagittal = slicesByView.sagittal.map(sl => {
+    this.sliderMeasurements.sagittal = slicesByView.sagittal.map(sl => {
       return (sl.match(/(-?\d+mm)?.json/)[1])
     })
-    ob.sliderMeasurements.coronal = slicesByView.coronal.map(sl => {
+    this.sliderMeasurements.coronal = slicesByView.coronal.map(sl => {
       return (sl.match(/(-?\d+mm)?.json/)[1])
     })
   }
@@ -197,35 +212,29 @@ class CtrlOp {
     this.ctrlDiv.append(label)
     this.slider = range
     this.sliderlabel = label
-    // add the on change event emitter 
+    // makes several attributes helpful for handling slider change
+    this.prepRangeData()
+    // add the on input event emitter  for when slider moves
     // 
     this.range.oninput = () => {
-      this.selectedSlice = this.range.value
-      // call the filter on the activation data, and pass to create image, this function internally takes into account where the filter min and max interactive divs are positioned
-      activationData = activityfilter.filter()
-      // check for categorical filters, step through the list of the filter holder and apply the filter functions of each to the activation data
-      categoricalFilters.filtersList.map(catfilter => {
-        activationData = catfilter.filter(activationData)
-      })
-
-
-      // determine which radio button is currently pressed
-      getRadioSelected()
-
-
-
+      this.selectedSliceIndex = parseInt(this.range.value)
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
-      let name = rangeData.slices[selected][ind]
-      label.innerHTML = rangeData.measurements[selected][range.value]
-
-      // draw the actual data on the canvas given the activation data and the slice to index the sliceData set of region boundaries
-      sliceSelection.createImage(name, drawing, activationData)
+      // having trouble getting the
+      let name = this.sliderSlices.slices[this.radioSelected][ind]
+      this.sliderlabel.innerHTML = this.sliderMeasurements[this.radioSelected][ind]
+      // provide the name of the slice to the canvas drawing machinery
+      // ....
+      let e = new Event("sliderchange")
+      this.ctrlDiv.dispatchEvent(e)
     }
+  }
+  // prepare the filters
+  createFilters() {
 
   }
-  other() {
 
+  other() {
     //create the activity filterselector
     let filter = activityFilter(holder)
     filter.create()
@@ -237,6 +246,130 @@ class CtrlOp {
     // when we select a column as the value column of the activity data coloring we must grab the data from there and initiate the downstream draw
   }
 }
+
+class ActivityFilter {
+  constructor(ctrlDiv, data) {
+    this.min = undefined
+    this.max = undefined
+    this.ctrlDiv = ctrlDiv
+    this.data = data
+  }
+  init() {
+    // make a range slider that updates the self filter function which is called later on activity data
+    let rangeWidth = this.ctrlDiv.getBoundingClientRect()
+    let min = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
+    let max = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
+    // this si the amount of screen space that the filter div's can move, minus the width of the element
+    this.width = (rangeWidth.width / 4) - 30
+    // create labels
+    this.minlabel = document.createElement("p")
+    this.minlabel.id = "minlabel"
+    this.minlabel.className = "filterLabel"
+    this.maxlabel = document.createElement("p")
+    this.minlabel.id = "maxlabel"
+    this.maxlabel.className = "filterLabel"
+    let labelholder = document.createElement("div")
+    labelholder.id = "labelholder"
+    // prevent sliders from going over each other
+    min.additionalLimit = (v) => {
+      // stay below the max point
+      let maxleft = parseInt(max.element.style.left)
+      if (v > maxleft) {
+        min.element.style.left = `${maxleft}px`
+        this.min = maxleft
+        // update min label
+        this.minlabel.innerHTML = (maxleft * this.absmax / (this.width)).toFixed(5)
+        return true
+      }
+      this.min = v
+      // update min label and account for the divslider width
+      this.minlabel.innerHTML = (v * this.absmax / (this.width)).toFixed(5)
+      return false
+    }
+    max.additionalLimit = (v) => {
+      let minleft = parseInt(min.element.style.left)
+      if (v < minleft) {
+        max.element.style.left = `${minleft}px`
+        this.max = minleft
+        this.maxlabel.innerHTML = (minleft * this.absmax / (this.width)).toFixed(5)
+        return true
+      }
+      this.maxlabel.innerHTML = (v * this.absmax / (this.width)).toFixed(5)
+      this.max = v
+      return false
+    }
+    labelholder.append(this.minlabel, this.maxlabel)
+    this.ctrlDiv.append(min.element)
+    this.ctrlDiv.append(max.element)
+    this.ctrlDiv.append(labelholder)
+    // once placed, set this to keep in correct spot, make them sit on same line
+    max.element.style.top = `-30px` // overlap the element with the other
+    max.element.style.left = "50px"
+  }
+  filter() {
+    // calculate the actual min activity value
+    let activitymin = this.absmax * this.min / this.width
+    let activitymax = this.absmax * this.max / this.width
+    return this.data.map(e => {
+      if (e > activitymin && e < activitymax) {
+        return e
+      }
+      return NaN
+    })
+  }
+  addData(data) {
+    this.data = data
+  }
+  setbounds(absmin, absmax) {
+    this.absmax = absmax
+    this.absmin = absmin
+  }
+}
+
+
+class divMaker {
+  constructor(width, holder) {
+    let d = document.createElement("div")
+    this.element = d
+    d.style.height = "30px"
+    d.style.width = "30px"
+    d.style.position = "relative"
+    let move = (e) => {
+      let x = e.clientX - holder.getBoundingClientRect().left
+      let left = x
+      if (left > width - 30) { // because the size of the div at the moment is 30
+        left = width - 30
+      }
+      if (left < 0) {
+        left = 0
+      }
+      if (this.additionalLimit(left)) {
+        console.log("stopped marker")
+      } else {
+        this.element.style.left = `${left}px`
+      }
+      this.v = parseInt(this.element.style.left)
+    }
+    let cancelMove = (e) => {
+      console.log("cancelling")
+      document.removeEventListener("mousemove", move)
+      document.removeEventListener("mouseup", cancelMove)
+      // emit event that canvas must redraw
+      let e = new Event("activityfilterchange")
+      this.element.dispatchEvent(e)
+    }
+    let click = () => {
+      document.addEventListener("mousemove", move)
+      document.addEventListener("mouseup", cancelMove)
+    }
+    d.addEventListener("mousedown", click)
+    d.style.background = "#00000052"
+  }
+  additionalLimit(v) {
+    return undefined
+  }
+}
+
 
 class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
