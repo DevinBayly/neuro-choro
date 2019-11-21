@@ -598,8 +598,7 @@ class Canvas {
 
   drawCanvas() {
     //TODO find better version of how to structure so that the margin can be programmatically set
-    this.fillStyle = "rgb(255,255,255)"
-    this.ctx.fillRect(0,0,this.can.width,this.can.height)
+    this.ctx.clearRect(0,0,this.can.width,this.can.height)
     this.ctx.beginPath()
     this.invisictx.beginPath()
     let red = {
