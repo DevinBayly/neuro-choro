@@ -22,7 +22,10 @@ class Application {
       await this.ctrlop.init()
 
       // create the canvas
-      this.can = new Canvas(newPane.paneDiv, this.ctrlop.data)
+      this.can = new Canvas(newPane.paneDiv)
+      this.can.init()
+      // target the canvas with our events
+      //this.ctrlop.target(this.can.can)
 
       this.panes.push(newPane)
     }
@@ -57,6 +60,10 @@ class CtrlOp {
     paneDiv.append(ctrlDiv)
     this.paneDiv = paneDiv
     this.ctrlDiv = ctrlDiv
+    this.eTarget = undefined
+  }
+  target(ele) {
+    this.eTarget = ele
   }
   // this is called in the button click scope, where I believe we are permitted to perform an await before making the canvas
   async init() {
@@ -134,7 +141,9 @@ class CtrlOp {
       // also update the max for the slider
       this.slider.max = this.sliderSlices[this.radioSelected].length - 1
       let e = new Event("radiobuttonchanged")
-      this.ctrlDiv.dispatchEvent(e)
+      if (this.eTarget) {
+        this.eTarget.dispatchEvent(e)
+      }
     })
   }
   // this is the part for creating the column selection area
@@ -163,7 +172,9 @@ class CtrlOp {
       // this will make the filters update themselves, and make the canvas redraw the 
       let e = new Event("valcolchange")
       // update the canvas columdata somehow
-      this.ctrlDiv.dispatchEvent(e)
+      if (this.eTarget) {
+        this.eTarget.dispatchEvent(e)
+      }
     }
   }
   prepRangeData() {
@@ -232,7 +243,9 @@ class CtrlOp {
       // provide the name of the slice to the canvas drawing machinery
       // ....
       let e = new Event("sliderchange")
-      this.ctrlDiv.dispatchEvent(e)
+      if (this.eTarget) {
+        this.eTarget.dispatchEvent(e)
+      }
     }
   }
   // prepare the filters
@@ -378,7 +391,9 @@ class divMaker {
       document.removeEventListener("mouseup", cancelMove)
       // emit event that canvas must redraw
       let filterEvent = new Event("activityfilterchange")
-      window.dispatchEvent(filterEvent)
+      if (this.eTarget) {
+        this.eTarget.dispatchEvent(filterEvent)
+      }
     }
     let click = () => {
       document.addEventListener("mousemove", move)
@@ -397,7 +412,7 @@ class divMaker {
 class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
   // use the ctrlInstance to get things like boundary data, and fill data when the values change
-  constructor(paneDiv, ctrlInstance) {
+  constructor(paneDiv) {
     this.can = document.createElement("canvas")
     // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
     // easy hack to keep performance and accuracy of interactivity on canvas
@@ -406,40 +421,67 @@ class Canvas {
     this.innerHolder = document.createElement("div")
     this.innerHolder.className = "innerholder"
     // other versions of teh data will be around later,
-    this.initialData = data
     // get data for boundaries and selected value column
     // this coldata changes frequently
     this.coldata = ctrlInstance.coldata
     // shouldn't end up modified
     this.regionBoundaryData = ctrlInstance.regionBoundaryData
     this.ctrlInstance = ctrlInstance
+    this.paneDiv = paneDiv
   }
-  init() {
-    // setup the canvas
-    this.innerHolder.append(can)
-    this.paneDiv.append(this.innerHolder)
-    // calculate globals from the data
-    this.calcRegionSizeGlobal()
-    this.calcValueColMinMax()
-    this.setupCanvas()
-    //create interpolators for drawing
-    //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
-    // create the regnametoValueMap
+  makeRegDataMap() {
     this.regNameToValueMap = {}
     this.ctrlInstance.data["regionNames"].map((e, i) => {
       this.regNameToValueMap[e] = this.coldata[i]
     })
-    // take care of binding various functions to the events that get emitted
   }
+  init() {
+    // setup the canvas
+    this.innerHolder.append(this.can)
+    this.innerHolder.append(this.invisican)
+    this.paneDiv.append(this.innerHolder)
+    //create interpolators for drawing
+    //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
+    // create the regnametoValueMap
+    this.ctx = this.can.getContext("2d")
+    this.invisictx = this.invisican.getContext("2d")
+    // take care of binding various functions to the events that get emitted
+    // events to track valcolchange,radiobuttonchanged,sliderchange, activityfilterchange
+    // valcolchange we need to wait until something happens with the sliders?
+
+    //radiobutton and slider change have implications for the slice we are looking at
+    this.can.addEventListener("radiobuttonchanged", () => {
+      this.setupCanvas()
+      this.drawCanvas()
+    })
+    this.can.addEventListener("sliderchange", () => {
+      this.setupCanvas()
+      this.drawCanvas()
+    })
+
+    //activity filter change, and valcolchange mean we must update our version of the ctrlInstance coldat, requires updating the regNameToValMap also
+    this.can.addEventListener("activityfilterchange", () => {
+      this.setupCanvas()
+      this.drawCanvas()
+    })
+
+  }
+  // this is meant to query the ctrlInstance for what view and slice index we are on
   setupCanvas() {
-    this.ctx = can.getContext("2d")
-    this.invisictx = invisican.getContext("2d")
-    this.can.addEventListener("click", getPos.bind(this))
+    let view = this.ctrlInstance.radioSelected
+    let sliceIndex = this.ctrlInstance.slider.value
+    let sliceName = this.ctrlInstance.sliderSlices[view][sliceIndex]
+    // this is the object that has features, and properties
+    this.sliceData = this.regionBoundaryData[sliceName]
+    this.coldata = this.filteredData
+    // will update the map used in the draw to determine the color of a region
+    this.makeRegDataMap()
+    this.can.addEventListener("click", this.getPos.bind(this))
     // initialize the color setting for the invisican
-    let cc = color_collection(this.regionBoundaryData.features.length)
+    let cc = color_collection(this.sliceData.features.length)
     this.colToRegMap = {}
     this.regToColMap = {}
-    this.regionBoundaryData.features.map((f, i) => {
+    this.sliceData.features.map((f, i) => {
       // this is for the fill on the invisible canvas
       regToColMap[f.properties.regionName] = cc.array[i]
       colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
@@ -494,7 +536,7 @@ class Canvas {
     // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
     //!! should only do this part once
     let globals = [1000, 1000, -1000, -1000]
-    for (let feature of this.brain.features) {
+    for (let feature of this.sliceData.features) {
       // likely nota  loop because coordinates is a single element array
       for (let line of feature.geometry.coordinates) {
         for (let pt of line) {
@@ -550,7 +592,8 @@ class Canvas {
       b: 128
     }
     // iterate over the boundary data
-    for (let region of this.regionBoundaryData.features) {
+    for (let region of this.sliceData.features) {
+      // this is the object that has features, and properties
       for (let coords of region.geometry.coordinates) {
 
         // create simplified variable with points and region name
@@ -572,10 +615,10 @@ class Canvas {
         this.ctx.closePath()
         this.invisictx.closePath()
         // these aren't defined yet
-        if (regNameToValueMap != undefined) {
-          if (regNameToValueMap[linedata.region]) {
-            let scanData = regNameToValueMap[linedata.region]
-            let t = globalinfo.valToColInterp.calc(scanData)
+        if (this.regNameToValueMap != undefined) {
+          if (this.regNameToValueMap[linedata.region]) {
+            let scanData = this.regNameToValueMap[linedata.region]
+            let t = this.valToColInterp.calc(scanData)
             let lerpc = LerpCol(yellow, red, t, 2)
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
@@ -588,7 +631,7 @@ class Canvas {
           this.ctx.fill();
         }
         // color on the invisible canvas, this happens regardless of activity
-        this.invisictx.fillStyle = `rgb(${regToColMap[linedata.region][0]},${regToColMap[linedata.region][1]},${regToColMap[linedata.region][2]})`
+        this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
         this.invisictx.fill()
       }
     }
