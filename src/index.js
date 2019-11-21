@@ -242,13 +242,11 @@ class CtrlOp {
     }
     this.activityFilter = new ActivityFilter(this.ctrlDiv, this.coldata)
     this.activityFilter.init()
+    // set them at default values
+
   }
 
   other() {
-    //create the activity filterselector
-    let filter = activityFilter(holder)
-    filter.create()
-
     // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
     let catFilter = altColumnFilterHolder()
     catFilter.create(canvasHolder, data)
@@ -279,10 +277,10 @@ class ActivityFilter {
 
     // establish the absmin and absmax of the column data
     // raise hell if the data can't be sorted this way
-    this.setbounds(Math.min(...this.data),Math.max(...this.data))
+    this.setbounds(Math.min(...this.data), Math.max(...this.data))
 
-    this.maxel =max
-    this.minel =min
+    this.maxel = max
+    this.minel = min
     // this si the amount of screen space that the filter div's can move, minus the width of the element
     this.width = (rangeWidth.width / 4) - 30
     // create labels
@@ -389,6 +387,7 @@ class divMaker {
     d.addEventListener("mousedown", click)
     d.style.background = "#00000052"
   }
+  // this function is replaced in the instances of the object, class inheritance case
   additionalLimit(v) {
     return undefined
   }
@@ -397,10 +396,201 @@ class divMaker {
 
 class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
-  constructor(paneDiv, data) {
-    this.canvas = document.createElement("canvas")
+  // use the ctrlInstance to get things like boundary data, and fill data when the values change
+  constructor(paneDiv, ctrlInstance) {
+    this.can = document.createElement("canvas")
+    // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
+    // easy hack to keep performance and accuracy of interactivity on canvas
+    this.invisican = document.createElement("canvas")
+    this.invisican.id = "invisican"
+    this.innerHolder = document.createElement("div")
+    this.innerHolder.className = "innerholder"
     // other versions of teh data will be around later,
     this.initialData = data
+    // get data for boundaries and selected value column
+    // this coldata changes frequently
+    this.coldata = ctrlInstance.coldata
+    // shouldn't end up modified
+    this.regionBoundaryData = ctrlInstance.regionBoundaryData
+    this.ctrlInstance = ctrlInstance
+  }
+  init() {
+    // setup the canvas
+    this.setupCanvas()
+    this.innerHolder.append(can)
+    this.paneDiv.append(this.innerHolder)
+    // calculate globals from the data
+    this.calcRegionSizeGlobal()
+    this.calcValueColMinMax()
+    //create interpolators for drawing
+    //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
+    let xinterp = interpolator()
+    xinterp.setup(this.regionSizes[0], 0 + 10, this.regionSizes[2], 500 + 10)
+    let yinterp = interpolator()
+    yinterp.setup(this.regionSizes[1], (500 + 10) * this.canvasRatio, this.regionSizes[3], 10)// extra 10is the margin split intwo
+    // create the regnametoValueMap
+    this.regNameToValueMap = {}
+    this.ctrlInstance.data["regionNames"].map((e, i) => {
+      this.regNameToValueMap[e] = this.coldata[i]
+    })
+    // initialize the color setting for the invisican
+    let cc = color_collection(this.regionBoundaryData.features.length)
+    this.colToRegMap = {}
+    this.regToColMap = {}
+    this.regionBoundaryData.features.map((f, i) => {
+      // this is for the fill on the invisible canvas
+      regToColMap[f.properties.regionName] = cc.array[i]
+      colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
+    })
+    // take care of binding various functions to the events that get emitted
+  }
+  setupCanvas() {
+    this.ctx = can.getContext("2d")
+    this.invisictx = invisican.getContext("2d")
+    this.can.addEventListener("click", getPos.bind(this))
+  }
+  getPos(e) {
+    // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
+    let rect = this.can.getBoundingClientRect()
+    let x = e.clientX - rect.left
+    let y = e.clientY - rect.top
+    let ctx = this.invisictx
+    // activate the border point-in-polygon algorithm
+    // get image data
+    // loop until we move right to get a pix value that is above certain threshold green
+    let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
+    // query the invisible map
+    if (colToRegMap[JSON.stringify(pix)] != undefined) {
+      // make a little side box with the info in it
+      // take away a chunk of the image at that area
+      let rightDiv = document.createElement("div")
+      rightDiv.id = "tooltip"
+      rightDiv.innerHTML = `
+            <h3>Selected Region
+              <p class="tooltip-child">
+                    ${ colToRegMap[JSON.stringify(pix)]}
+              </p>
+              <p class="tooltip-child">
+            activity value: hey this is missing!
+              </p>
+            </h3>
+            `
+      //append to canvas element if possible
+      this.innerHolder.append(rightDiv)
+    }
+  }
+  resize(height, width, margin) {
+    this.can.height = height + margin
+    this.can.width = width + margin
+    this.invisican.height = height + margin
+    this.invisican.width = width + margin
+    this.ctx.lineWidth = lwidth
+    this.invisictx.lineWidth = lwidth
+  }
+  // figure out how much actual space the brain region data takes up, this only needs to get figured out once per pane creation
+  calcRegionSizeGlobal() {
+    // scanCol is the column that has the data we care about putting in the color fill
+    // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
+    //!! should only do this part once
+    let globals = [1000, 1000, -1000, -1000]
+    for (let feature of this.brain.features) {
+      // likely nota  loop because coordinates is a single element array
+      for (let line of feature.geometry.coordinates) {
+        for (let pt of line) {
+          if (pt[0] < globals[0]) {
+            globals[0] = pt[0]
+          }
+          if (pt[1] < globals[1]) {
+            globals[1] = pt[1]
+          }
+          if (pt[0] > globals[2]) {
+            globals[2] = pt[0]
+          }
+          if (pt[1] > globals[3]) {
+            globals[3] = pt[1]
+          }
+        }
+      }
+    }
+    this.regionSizes = globals
+    this.canvasRatio = globals[3] / globals[2]
+  }
+  // calculate the min and max of the column provided to the canvas class
+  calcValueColMinMax() {
+    this.scanDatamin = 0
+    this.scanDatamax = 0
+    for (let row of this.coldata) {
+      if (row > this.scanDatamax) {
+        this.scanDatamax = parseFloat(row)
+      }
+      if (row < this.scanDatamin) {
+        this.scanDatamin = parseFloat(row)
+      }
+    }
+    // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
+    let valToColInterp = interpolator()
+    valToColInterp.setup(this.scanDatamin, 0, this.scanDatamax, 1)
+    this.valToColInterp = valToColInterp
+    // calculate the min and maxes of the scan data for each scan
+  }
+
+  drawCanvas() {
+    //TODO find better version of how to structure so that the margin can be programmatically set
+    this.ctx.beginPath()
+    this.invisictx.beginPath()
+    let red = {
+      r: 255,
+      g: 0,
+      b: 0,
+    }
+    let yellow = {
+      r: 128,
+      g: 128,
+      b: 128
+    }
+    // iterate over the boundary data
+    for (let region of this.regionBoundaryData.features) {
+      for (let coords of region.coordinates) {
+
+        // create simplified variable with points and region name
+        let linedata = { points: coords, region: region.properties.regionName }
+
+        // begin actual drawing to the canvas
+        let first = linedata.points[0]
+        let x = xinterp.calc(first[0])
+        let y = yinterp.calc(first[1])
+        this.ctx.moveTo(x, y)
+        this.invisictx.moveTo(x, y)
+        for (let i = 1; i < linedata.points.length; i++) {
+          let pt = linedata.points[i]
+          let x = xinterp.calc(pt[0])
+          let y = yinterp.calc(pt[1])
+          this.ctx.lineTo(x, y)
+          this.invisictx.lineTo(x, y)
+        }
+        this.ctx.closePath()
+        this.invisictx.closePath()
+        // these aren't defined yet
+        if (regNameToValueMap != undefined) {
+          if (regNameToValueMap[linedata.region]) {
+            let scanData = regNameToValueMap[linedata.region]
+            let t = globalinfo.valToColInterp.calc(scanData)
+            let lerpc = LerpCol(yellow, red, t, 2)
+            this.ctx.fillStyle = lerpc
+            this.ctx.fill()
+            // query the region to color map
+            activity = true
+          }
+        } else {
+          // leave the section gray
+          this.ctx.fillStyle = "gray";
+          this.ctx.fill();
+        }
+        // color on the invisible canvas, this happens regardless of activity
+        this.invisictx.fillStyle = `rgb(${regToColMap[linedata.region][0]},${regToColMap[linedata.region][1]},${regToColMap[linedata.region][2]})`
+        this.invisictx.fill()
+      }
+    }
   }
 }
 
@@ -504,47 +694,7 @@ class Canvas {
 //    this.ctrlDiv = ctrlDiv
 //    this.paneDiv = paneDiv
 //  }
-//  calcGlobals(activationData) {
-//    // scanCol is the column that has the data we care about putting in the color fill
-//    // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
-//    let globals = [1000, 1000, -1000, -1000]
-//    for (let feature of this.brain.features) {
-//      // likely nota  loop because coordinates is a single element array
-//      for (let line of feature.geometry.coordinates) {
-//        for (let pt of line) {
-//          if (pt[0] < globals[0]) {
-//            globals[0] = pt[0]
-//          }
-//          if (pt[1] < globals[1]) {
-//            globals[1] = pt[1]
-//          }
-//          if (pt[0] > globals[2]) {
-//            globals[2] = pt[0]
-//          }
-//          if (pt[1] > globals[3]) {
-//            globals[3] = pt[1]
-//          }
-//        }
-//      }
-//    }
-//    this.globals = globals
-//    this.ratio = glthis.ls[3] / glthis.ls[2]
-//    this.scanDatamin = 0
-//    this.scanDatamax = 0
-//    for (let row of activationData) {
-//      if (row > this.scanDatamax) {
-//        this.scanDatamax = parseFloat(row)
-//      }
-//      if (row < this.scanDatamin) {
-//        this.scanDatamin = parseFloat(row)
-//      }
-//    }
-//    // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
-//    let scanScalar = interpolator()
-//    scanScalar.setup(ob.scanDatamin, 0, ob.scanDatamax, 1)
-//    this.scanScalar = scanScalar
-//    // calculate the min and maxes of the scan data for each scan
-//  }
+//  
 //
 //
 //  async fetchData() {
@@ -684,67 +834,7 @@ class Canvas {
 //    }
 //    return ob
 //  }
-//  drawLine(linedata, drawing, activationData) {
-//    //linedata  = {points,region}
-//    let ob = {}
-//    // need canvas ref
-//    //create interpolator
-//    //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
-//    let xinterp = interpolator()
-//    xinterp.setup(globalinfo.globals[0], 0 + 10, globalinfo.globals[2], 500 + 10)
-//    let yinterp = interpolator()
-//    yinterp.setup(globalinfo.globals[1], (500 + 10) * globalinfo.ratio, globalinfo.globals[3], 10)// extra 10is the margin split intwo
-//    //TODO find better version of how to structure so that the margin can be programmatically set
-//    ob.draw = () => {
-//      drawing.ctx.beginPath()
-//      drawing.invisictx.beginPath()
-//      let red = {
-//        r: 255,
-//        g: 0,
-//        b: 0,
-//      }
-//      let yellow = {
-//        r: 128,
-//        g: 128,
-//        b: 128
-//      }
-//      let first = linedata.points[0]
-//      let x = xinterp.calc(first[0])
-//      let y = yinterp.calc(first[1])
-//      drawing.ctx.moveTo(x, y)
-//      drawing.invisictx.moveTo(x, y)
-//      for (let i = 1; i < linedata.points.length; i++) {
-//        let pt = linedata.points[i]
-//        let x = xinterp.calc(pt[0])
-//        let y = yinterp.calc(pt[1])
-//        drawing.ctx.lineTo(x, y)
-//        drawing.invisictx.lineTo(x, y)
-//      }
-//      drawing.ctx.closePath()
-//      drawing.invisictx.closePath()
-//      if (regNameToValueMap != undefined) {
-//        if (regNameToValueMap[linedata.region]) {
-//          let scanData = regNameToValueMap[linedata.region]
-//          let t = globalinfo.scanScalar.calc(scanData)
-//          let lerpc = LerpCol(yellow, red, t, 2)
-//          drawing.ctx.fillStyle = lerpc
-//          drawing.ctx.fill()
-//          // query the region to color map
-//          activity = true
-//        }
-//      } else {
-//        // leave the section gray
-//        drawing.ctx.fillStyle = "gray";
-//        drawing.ctx.fill();
-//      }
-//      // color on the invisible canvas, this happens regardless of activity
-//      drawing.invisictx.fillStyle = `rgb(${regToColMap[linedata.region][0]},${regToColMap[linedata.region][1]},${regToColMap[linedata.region][2]})`
-//      drawing.invisictx.fill()
-//
-//
-//    }
-//    return ob
-//  }
+//  drawLine(linedata, drawing, activationData) 
 //}
 //
 //// things that don't depuend on internal values are left as helper functions on the outside
@@ -818,69 +908,7 @@ class Canvas {
 //
 //
 //
-//let setup = (lwidth, paneHolder) => {
-//  let ob = {}
-//  ob.outerHolder = paneHolder
-//  ob.begin = () => {
-//    // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
-//    // easy hack to keep performance and accuracy of interactivity on canvas
-//    let invisican = document.createElement("canvas")
-//    invisican.id = "invisican"
-//    let can = document.createElement("canvas")
-//    ob.innerHolder = document.createElement("div")
-//    ob.innerHolder.className = "innerholder"
-//    ob.innerHolder.append(can)
-//    paneHolder.append(ob.innerHolder)
-//    ob.can = can
-//    ob.invisican = invisican
-//    ob.ctx = can.getContext("2d")
-//    ob.invisictx = invisican.getContext("2d")
-//    let getPos = (e) => {
-//      // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
-//      let rect = ob.can.getBoundingClientRect()
-//      let x = e.clientX - rect.left
-//      let y = e.clientY - rect.top
-//      let ctx = ob.invisictx
-//      // activate the border point-in-polygon algorithm
-//      // get image data
-//      // loop until we move right to get a pix value that is above certain threshold green
-//      let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
-//      // query the invisible map
-//      if (colToRegMap[JSON.stringify(pix)] != undefined) {
-//        // make a little side box with the info in it
-//        // take away a chunk of the image at that area
-//        let rightDiv = document.createElement("div")
-//        rightDiv.id = "tooltip"
-//        rightDiv.innerHTML = `
-//            <h3>Selected Region
-//              <p class="tooltip-child">
-//                    ${ colToRegMap[JSON.stringify(pix)]}
-//              </p>
-//              <p class="tooltip-child">
-//            activity value: hey this is missing!
-//              </p>
-//            </h3>
-//            `
-//        //append to canvas element if possible
-//        ob.innerHolder.append(rightDiv)
-//        setTimeout(() => {
-//          // replace the original pixels
-//          rightDiv.remove()
-//        }, 3500)
-//      }
-//    }
-//    ob.can.addEventListener("click", getPos)
-//  }
-//  ob.resize = (height, width, margin) => {
-//    ob.can.height = height + margin
-//    ob.can.width = width + margin
-//    ob.invisican.height = height + margin
-//    ob.invisican.width = width + margin
-//    ob.ctx.lineWidth = lwidth
-//    ob.invisictx.lineWidth = lwidth
-//  }
-//  return ob
-//}
+
 //
 //
 //let drawToCanvas = (drawing, upperData, activationData) => {
