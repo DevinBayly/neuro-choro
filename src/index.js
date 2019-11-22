@@ -7,12 +7,20 @@ class Application {
   }
   // changed?
   async addButton() {
+    // fetch the region boundary data
+    await fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
+      // assign result to the pane Parent
+      // this almost needs to be tied to the application instead
+      this.regionBoundaryData = j
+    })
     this.btndiv = document.createElement("div")
     this.btndiv.id = "btnholder"
     this.btn = document.createElement("button")
     this.btn.onclick = async () => {
       // create a pane
       let newPane = new Pane(this.panes.length)
+      // see if thhis resolves the memory redundancy
+      newPane.regionBoundaryData = this.regionBoundaryData
       // here's the point where we can connect up the various parts
       // finish pane loading
 
@@ -102,12 +110,6 @@ class CtrlOp {
       }
     ).then(text => {
       this.csvDataReader(text)
-    })
-    // fetch the region boundary data
-    await fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
-      // assign result to the pane Parent
-      // this almost needs to be tied to the application instead
-      this.paneOb.regionBoundaryData = j
     })
   }
   csvDataReader(csvRawString) {
