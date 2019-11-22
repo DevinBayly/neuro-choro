@@ -54,7 +54,8 @@ class Pane {
 
 class CtrlOp {
   // file loading, val columns, filters, view radio buttons, and slice sliders
-  constructor(paneDiv) {
+  constructor(paneDiv,paneOb) {
+    this.paneOb = paneOb
     let ctrlDiv = document.createElement("div")
     ctrlDiv.className = "ctrlDiv"
     // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
@@ -105,7 +106,9 @@ class CtrlOp {
     })
     // fetch the region boundary data
     await fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
-      this.regionBoundaryData = j
+      // assign result to the pane Parent
+      // this almost needs to be tied to the application instead
+      this.paneOb.regionBoundaryData = j
     })
   }
   csvDataReader(csvRawString) {
@@ -113,16 +116,16 @@ class CtrlOp {
     // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
     let lines = csvRawString.split("\r")
     let headers = lines[0].split(",")
-    this.data = {}
+    this.paneOb.data = {}
     headers.map(e => {
-      this.data[e] = []
+      this.paneOb.data[e] = []
     })
     // read through the rest of the lines and add them to the data
     // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
     for (let iLine = 1; iLine < lines.length; iLine++) {
       let entries = lines[iLine].split(",")
       for (let i = 0; i < entries.length; i++) {
-        this.data[headers[i]].push(entries[i])
+        this.paneOb.data[headers[i]].push(entries[i])
       }
     }
   }
@@ -161,7 +164,7 @@ class CtrlOp {
 
     // this is the selection element that is populated by the column names in the csv
     let valueColumnSelect = document.createElement("select")
-    for (let key of Object.keys(this.data)) {
+    for (let key of Object.keys(this.paneOb.data)) {
       let option = document.createElement("option")
       option.value = key
       option.innerHTML = key
@@ -170,7 +173,7 @@ class CtrlOp {
     this.ctrlDiv.append(valueColumnSelect)
     valueColumnSelect.onchange = () => {
       // parse the data into numeric
-      let numericData = this.data[valueColumnSelect.value].map(e => parseFloat(e))
+      let numericData = this.paneOb.data[valueColumnSelect.value].map(e => parseFloat(e))
       this.coldata = numericData
 
       // establish filters for the selected column of data
