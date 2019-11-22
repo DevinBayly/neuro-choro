@@ -54,7 +54,7 @@ class Pane {
 class CtrlOp {
   // file loading, val columns, filters, view radio buttons, and slice sliders
   // meaningful aspects of ctrlOp state
-  //  sliderIndex, brainView, sliceData, (brain region data)
+  //  sliderIndex, sliceName brainView, sliceData, (brain region data)
   //  initialColData, filteredColData,colName, csvData (region fill data)
 
   constructor(paneDiv,paneOb) {
@@ -71,10 +71,6 @@ class CtrlOp {
     this.eTarget = ele
   }
   // these functions will get called in the event listeners and allow the canvas to have the correct data 
-  setDataShareCallbacks(storeValCol,storeSlice){
-    this.storeValCol = storeValCol
-    this.storeSlice = storeSlice
-  }
   // this is called in the button click scope, where I believe we are permitted to perform an await before making the canvas
   async init() {
     // setup the radio buttons
@@ -119,16 +115,16 @@ class CtrlOp {
     // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
     let lines = csvRawString.split("\r")
     let headers = lines[0].split(",")
-    this.paneOb.data = {}
+    this.paneOb.csvData = {}
     headers.map(e => {
-      this.paneOb.data[e] = []
+      this.paneOb.csvData[e] = []
     })
     // read through the rest of the lines and add them to the data
     // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
     for (let iLine = 1; iLine < lines.length; iLine++) {
       let entries = lines[iLine].split(",")
       for (let i = 0; i < entries.length; i++) {
-        this.paneOb.data[headers[i]].push(entries[i])
+        this.paneOb.csvData[headers[i]].push(entries[i])
       }
     }
   }
@@ -154,7 +150,7 @@ class CtrlOp {
       this.slider.max = this.sliderSlices[this.paneOb.brainView].length - 1
       let e = new Event("radiobuttonchanged")
       if (this.eTarget) {
-        let slice = this.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.slider.value]]
+        let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
         this.paneOb.sliceData = slice
         this.eTarget.dispatchEvent(e)
       }
@@ -167,7 +163,7 @@ class CtrlOp {
 
     // this is the selection element that is populated by the column names in the csv
     let valueColumnSelect = document.createElement("select")
-    for (let key of Object.keys(this.paneOb.data)) {
+    for (let key of Object.keys(this.paneOb.csvData)) {
       let option = document.createElement("option")
       option.value = key
       option.innerHTML = key
@@ -176,7 +172,7 @@ class CtrlOp {
     this.ctrlDiv.append(valueColumnSelect)
     valueColumnSelect.onchange = () => {
       // parse the data into numeric
-      let numericData = this.paneOb.data[valueColumnSelect.value].map(e => parseFloat(e))
+      let numericData = this.paneOb.csvData[valueColumnSelect.value].map(e => parseFloat(e))
       this.paneOb.initialColData = numericData
 
       // establish filters for the selected column of data
@@ -188,8 +184,6 @@ class CtrlOp {
       // update the canvas columdata somehow
       if (this.eTarget) {
         // send it to the canvas
-        this.storeValCol(this.paneOb.initialColData)
-        // if we are already using this call back should we just draw call too?
         this.eTarget.dispatchEvent(e)
       }
     }
@@ -200,7 +194,7 @@ class CtrlOp {
       "axial": [],
       "coronal": []
     }
-    for (let n in this.regionBoundaryData) {
+    for (let n in this.paneOb.regionBoundaryData) {
       if (n.search(/cor/) == 0) {
         slicesByView["coronal"].push(n)
       }
@@ -254,15 +248,17 @@ class CtrlOp {
       this.selectedSliceIndex = parseInt(this.slider.value)
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
+      this.paneOb.sliderIndex = ind
       // having trouble getting the
-      let name = this.sliderSlices[this.paneOb.brainView][ind]
+      let name = this.sliderSlices[this.paneOb.brainView][ind]  
+      this.paneOb.sliceName =name
       this.sliderlabel.innerHTML = this.sliderMeasurements[this.paneOb.brainView][ind]
+      this.paneOb.sliceMeasure = this.sliderlabel.innerHTML
       // provide the name of the slice to the canvas drawing machinery
       // ....
       let e = new Event("sliderchange")
       if (this.eTarget) {
-        let slice = this.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.slider.value]]
-        this.storeSlice(slice)
+        let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.slider.value]]
         this.eTarget.dispatchEvent(e)
       }
     }
