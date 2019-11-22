@@ -22,7 +22,7 @@ class Application {
       await this.ctrlop.init()
 
       // create the canvas
-      this.can = new Canvas(newPane.paneDiv,this.ctrlop.data)
+      this.can = new Canvas(newPane.paneDiv,newPane)
       this.can.init()
       // target the canvas with our events
       this.ctrlop.target(this.can.can)
@@ -258,7 +258,8 @@ class CtrlOp {
       // ....
       let e = new Event("sliderchange")
       if (this.eTarget) {
-        let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.slider.value]]
+        let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
+        this.paneOb.sliceData = slice
         this.eTarget.dispatchEvent(e)
       }
     }
@@ -436,7 +437,8 @@ class divMaker {
 class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
   // use the ctrlInstance to get things like boundary data, and fill data when the values change
-  constructor(paneDiv,csvData) {
+  // use paneOb when there are needs for boundary data or filteredColData
+  constructor(paneDiv,paneOb) {
     this.can = document.createElement("canvas")
     // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
     // easy hack to keep performance and accuracy of interactivity on canvas
@@ -447,19 +449,13 @@ class Canvas {
     // other versions of teh data will be around later,
     // get data for boundaries and selected value column
     this.paneDiv = paneDiv
-    this.csvData= csvData
+    this.paneOb = paneOb
   }
   // capture the this value, and let teh callback modify the canvas property coldata
-  storeColumnData(){
-    return (coldata) => {this.coldata = coldata}
-  }
-  storeRegionData() {
-    return (sliceData) => {this.sliceData = sliceData}
-  }
   makeRegDataMap() {
     this.regNameToValueMap = {}
-    this.csvData["regionName"].map((e, i) => {
-      this.regNameToValueMap[e.replace(/\s/,"")] = this.paneOb.filteredData[i]
+    this.paneOb.csvData["regionName"].map((e, i) => {
+      this.regNameToValueMap[e.replace(/\s/,"")] = this.paneOb.filteredColData[i]
     })
   }
   init() {
@@ -503,10 +499,10 @@ class Canvas {
     this.makeRegDataMap()
     this.can.addEventListener("click", this.getPos.bind(this))
     // initialize the color setting for the invisican
-    let cc = color_collection(this.sliceData.features.length)
+    let cc = color_collection(this.paneOb.sliceData.features.length)
     this.colToRegMap = {}
     this.regToColMap = {}
-    this.sliceData.features.map((f, i) => {
+    this.paneOb.sliceData.features.map((f, i) => {
       // this is for the fill on the invisible canvas
       this.regToColMap[f.properties.regionName] = cc.array[i]
       this.colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
@@ -532,7 +528,7 @@ class Canvas {
     // loop until we move right to get a pix value that is above certain threshold green
     let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
     // query the invisible map
-    if (colToRegMap[JSON.stringify(pix)] != undefined) {
+    if (this.colToRegMap[JSON.stringify(pix)] != undefined) {
       // make a little side box with the info in it
       // take away a chunk of the image at that area
       let rightDiv = document.createElement("div")
@@ -540,7 +536,7 @@ class Canvas {
       rightDiv.innerHTML = `
             <h3>Selected Region
               <p class="tooltip-child">
-                    ${ colToRegMap[JSON.stringify(pix)]}
+                    ${ this.colToRegMap[JSON.stringify(pix)]}
               </p>
               <p class="tooltip-child">
             activity value: hey this is missing!
@@ -565,7 +561,7 @@ class Canvas {
     // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
     //!! should only do this part once
     let globals = [1000, 1000, -1000, -1000]
-    for (let feature of this.sliceData.features) {
+    for (let feature of this.paneOb.sliceData.features) {
       // likely nota  loop because coordinates is a single element array
       for (let line of feature.geometry.coordinates) {
         for (let pt of line) {
@@ -591,7 +587,7 @@ class Canvas {
   calcValueColMinMax() {
     this.scanDatamin = 0
     this.scanDatamax = 0
-    for (let row of this.coldata) {
+    for (let row of this.paneOb.filteredColData) {
       if (row > this.scanDatamax) {
         this.scanDatamax = parseFloat(row)
       }
@@ -622,7 +618,7 @@ class Canvas {
       b: 128
     }
     // iterate over the boundary data
-    for (let region of this.sliceData.features) {
+    for (let region of this.paneOb.sliceData.features) {
       // this is the object that has features, and properties
       for (let coords of region.geometry.coordinates) {
 
