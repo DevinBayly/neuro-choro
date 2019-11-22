@@ -53,6 +53,10 @@ class Pane {
 
 class CtrlOp {
   // file loading, val columns, filters, view radio buttons, and slice sliders
+  // meaningful aspects of ctrlOp state
+  //  sliderIndex, brainView, sliceData, (brain region data)
+  //  initialColData, filteredColData,colName, csvData (region fill data)
+
   constructor(paneDiv,paneOb) {
     this.paneOb = paneOb
     let ctrlDiv = document.createElement("div")
@@ -78,7 +82,7 @@ class CtrlOp {
     this.mkradio("sagittal")
     this.mkradio("coronal")
     // selected is the radio button we have selected
-    this.radioSelected = "sagittal" // default
+    this.paneOb.brainView = "sagittal" // default
 
     // instantiate loader
     await this.loader()
@@ -143,15 +147,15 @@ class CtrlOp {
     div.append(rad)
     div.append(label)
     this.ctrlDiv.append(div)
-    // add this.radioSelected on change
+    // add this.paneOb.brainView on change
     rad.addEventListener("click", () => {
-      this.radioSelected = rad.value
+      this.paneOb.brainView = rad.value
       // also update the max for the slider
-      this.slider.max = this.sliderSlices[this.radioSelected].length - 1
+      this.slider.max = this.sliderSlices[this.paneOb.brainView].length - 1
       let e = new Event("radiobuttonchanged")
       if (this.eTarget) {
-        let slice = this.regionBoundaryData[this.sliderSlices[this.radioSelected][this.slider.value]]
-        this.storeSlice(slice)
+        let slice = this.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.slider.value]]
+        this.paneOb.sliceData = slice
         this.eTarget.dispatchEvent(e)
       }
     })
@@ -173,7 +177,7 @@ class CtrlOp {
     valueColumnSelect.onchange = () => {
       // parse the data into numeric
       let numericData = this.paneOb.data[valueColumnSelect.value].map(e => parseFloat(e))
-      this.coldata = numericData
+      this.paneOb.initialColData = numericData
 
       // establish filters for the selected column of data
       this.createFilters()
@@ -184,7 +188,7 @@ class CtrlOp {
       // update the canvas columdata somehow
       if (this.eTarget) {
         // send it to the canvas
-        this.storeValCol(this.coldata)
+        this.storeValCol(this.paneOb.initialColData)
         // if we are already using this call back should we just draw call too?
         this.eTarget.dispatchEvent(e)
       }
@@ -251,13 +255,13 @@ class CtrlOp {
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
       // having trouble getting the
-      let name = this.sliderSlices[this.radioSelected][ind]
-      this.sliderlabel.innerHTML = this.sliderMeasurements[this.radioSelected][ind]
+      let name = this.sliderSlices[this.paneOb.brainView][ind]
+      this.sliderlabel.innerHTML = this.sliderMeasurements[this.paneOb.brainView][ind]
       // provide the name of the slice to the canvas drawing machinery
       // ....
       let e = new Event("sliderchange")
       if (this.eTarget) {
-        let slice = this.regionBoundaryData[this.sliderSlices[this.radioSelected][this.slider.value]]
+        let slice = this.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.slider.value]]
         this.storeSlice(slice)
         this.eTarget.dispatchEvent(e)
       }
@@ -268,7 +272,7 @@ class CtrlOp {
     if (this.activityFilter) {
       this.activityFilter.remove()
     }
-    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.coldata,this.eTarget)
+    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.paneOb.initialColData,this.eTarget,this.paneOb)
     this.activityFilter.init()
     // set them at default values
 
@@ -284,12 +288,13 @@ class CtrlOp {
 }
 
 class ActivityFilter {
-  constructor(ctrlDiv, data,eventTarget) {
+  constructor(ctrlDiv, data,eventTarget,paneOb) {
     this.min = undefined
     this.max = undefined
     this.ctrlDiv = ctrlDiv
     this.data = data
     this.eTarget = eventTarget
+    this.paneOb = paneOb
   }
   //remove the previous filter elements
   remove() {
@@ -310,6 +315,9 @@ class ActivityFilter {
 
     this.maxel = max
     this.minel = min
+    // make the draggable elements catch movement events and ensure that the filter method gets called when dragging stops
+    this.maxel.element.addEventListener("divmoved",this.filter.bind(this))
+    this.minel.element.addEventListener("divmoved",this.filter.bind(this))
     // this si the amount of screen space that the filter div's can move, minus the width of the element
     this.width = (rangeWidth.width / 4) - 30
     // create labels
@@ -361,12 +369,16 @@ class ActivityFilter {
     // calculate the actual min activity value
     let activitymin = this.absmax * this.min / this.width
     let activitymax = this.absmax * this.max / this.width
-    return this.data.map(e => {
+    this.paneOb.filteredColData = this.data.map(e => {
       if (e > activitymin && e < activitymax) {
         return e
       }
       return NaN
     })
+    // emit an actual canvas filtered event 
+    let e =new Event("valuefilterchange")
+    this.eTarget.dispatchEvent(e)
+
   }
   addData(data) {
     this.data = data
@@ -407,10 +419,9 @@ class divMaker {
       document.removeEventListener("mouseup", cancelMove)
       // emit event that canvas must redraw
       // right now there is no etarget because this is a makediv not a ctrlop
-      let filterEvent = new Event("activityfilterchange")
-      if (this.eTarget) {
-        this.eTarget.dispatchEvent(filterEvent)
-      }
+      let divEvent = new Event("divmoved")
+      // dispatch it with the d, and listen on the min and max to emit filter calls
+      d.dispatchEvent(divEvent)
     }
     let click = () => {
       document.addEventListener("mousemove", move)
@@ -452,7 +463,7 @@ class Canvas {
   makeRegDataMap() {
     this.regNameToValueMap = {}
     this.csvData["regionName"].map((e, i) => {
-      this.regNameToValueMap[e.replace(/\s/,"")] = this.coldata[i]
+      this.regNameToValueMap[e.replace(/\s/,"")] = this.paneOb.filteredData[i]
     })
   }
   init() {
@@ -470,7 +481,7 @@ class Canvas {
     this.ctx = this.can.getContext("2d")
     this.invisictx = this.invisican.getContext("2d")
     // take care of binding various functions to the events that get emitted
-    // events to track valcolchange,radiobuttonchanged,sliderchange, activityfilterchange
+    // events to track valcolchange,radiobuttonchanged,sliderchange, valuefilterchange
     // valcolchange we need to wait until something happens with the sliders?
 
     //radiobutton and slider change have implications for the slice we are looking at
@@ -484,7 +495,7 @@ class Canvas {
     })
 
     //activity filter change, and valcolchange mean we must update our version of the ctrlInstance coldat, requires updating the regNameToValMap also
-    this.can.addEventListener("activityfilterchange", () => {
+    this.can.addEventListener("valuefilterchange", () => {
       this.setupCanvas()
       this.drawCanvas()
     })
