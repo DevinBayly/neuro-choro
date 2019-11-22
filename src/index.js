@@ -17,7 +17,7 @@ class Application {
       // finish pane loading
 
       // create ctrloptions
-      this.ctrlop = new CtrlOp(newPane.paneDiv)
+      this.ctrlop = new CtrlOp(newPane.paneDiv,newPane)
       // loads the data and such
       await this.ctrlop.init()
 
@@ -26,7 +26,6 @@ class Application {
       this.can.init()
       // target the canvas with our events
       this.ctrlop.target(this.can.can)
-      this.ctrlop.setDataShareCallbacks(this.can.storeColumnData(),this.can.storeRegionData())
 
       this.panes.push(newPane)
     }
@@ -269,7 +268,7 @@ class CtrlOp {
     if (this.activityFilter) {
       this.activityFilter.remove()
     }
-    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.coldata)
+    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.coldata,this.eTarget)
     this.activityFilter.init()
     // set them at default values
 
@@ -285,11 +284,12 @@ class CtrlOp {
 }
 
 class ActivityFilter {
-  constructor(ctrlDiv, data) {
+  constructor(ctrlDiv, data,eventTarget) {
     this.min = undefined
     this.max = undefined
     this.ctrlDiv = ctrlDiv
     this.data = data
+    this.eTarget = eventTarget
   }
   //remove the previous filter elements
   remove() {
