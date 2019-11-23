@@ -19,7 +19,7 @@ class Application {
     this.btn.onclick = async () => {
       // create a pane
       let newPane = new Pane(this.panes.length)
-      // see if thhis resolves the memory redundancy
+      // pass reference to pane, to be used by ctrlOp and Canvas
       newPane.regionBoundaryData = this.regionBoundaryData
       // here's the point where we can connect up the various parts
       // finish pane loading
@@ -465,10 +465,10 @@ class Canvas {
     this.innerHolder.append(this.can)
     this.innerHolder.append(this.invisican)
     this.paneDiv.append(this.innerHolder)
-    this.can.height = 1500
-    this.can.width=1500
-    this.invisican.height = 1500
-    this.invisican.width=1500
+    this.can.height = 800
+    this.can.width = 800
+    this.invisican.height = 800
+    this.invisican.width=800
     //create interpolators for drawing
     //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
     // create the regnametoValueMap
@@ -478,6 +478,7 @@ class Canvas {
     // events to track valcolchange,radiobuttonchanged,sliderchange, valuefilterchange
     // valcolchange we need to wait until something happens with the sliders?
 
+    this.can.addEventListener("click", this.getPos.bind(this))
     //radiobutton and slider change have implications for the slice we are looking at
     this.can.addEventListener("radiobuttonchanged", () => {
       this.setupCanvas()
@@ -499,7 +500,6 @@ class Canvas {
   setupCanvas() {
     // will update the map used in the draw to determine the color of a region
     this.makeRegDataMap()
-    this.can.addEventListener("click", this.getPos.bind(this))
     // initialize the color setting for the invisican
     let cc = color_collection(this.paneOb.sliceData.features.length)
     this.colToRegMap = {}
@@ -607,6 +607,7 @@ class Canvas {
   drawCanvas() {
     //TODO find better version of how to structure so that the margin can be programmatically set
     this.ctx.clearRect(0,0,this.can.width,this.can.height)
+    this.invisictx.clearRect(0,0,this.can.width,this.can.height)
     this.ctx.beginPath()
     this.invisictx.beginPath()
     let red = {
@@ -648,6 +649,7 @@ class Canvas {
             let scanData = this.regNameToValueMap[linedata.region]
             let t = this.valToColInterp.calc(scanData)
             let lerpc = LerpCol(yellow, red, t, 2)
+            console.log("lerp",lerpc)
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
             // query the region to color map
@@ -657,9 +659,14 @@ class Canvas {
           this.ctx.fillStyle = "gray";
           this.ctx.fill();
         }
+        console.log("regmap",this.regToColMap[linedata.region])
+        console.log(linedata.region)
         // color on the invisible canvas, this happens regardless of activity
-        this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
-        this.invisictx.fill()
+        //this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
+        
+        //let col = Math.floor(Math.random()*255)
+        //this.invisictx.fillStyle = `rgb(${col},${col},${col})`
+        //this.invisictx.fill()
       }
     }
   }
