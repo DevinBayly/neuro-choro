@@ -368,8 +368,11 @@ class ActivityFilter {
     // calculate the actual min activity value
     let activitymin = this.absmax * this.min / this.width
     let activitymax = this.absmax * this.max / this.width
+    // give this information to the paneOb,useful for tooltips
+    this.paneOb.valFilterMin = activitymin
+    this.paneOb.valFilterMax = activitymax
     this.paneOb.filteredColData = this.data.map(e => {
-      if (e > activitymin && e < activitymax) {
+      if (e >= activitymin && e <= activitymax) {
         return e
       }
       return NaN
@@ -559,22 +562,26 @@ class Canvas {
         // remove any improper characters for the id
         let id = regionName.replace(/[-_]/g, "")
 
-        rightDiv.id = "tooltip"+id
+        rightDiv.id = "tooltip" + id
         rightDiv.innerHTML = `
             <h3>Selected Region
               <p class="tooltip-child">
                     ${ regionName}
               </p>
               <p class="tooltip-child">
-            activity value: hey this is missing!
+            <p>value: ${this.regNameToValueMap[regionName]}
+            </p><p>view: ${this.paneOb.brainView}
+            </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
+            </p><p>slice: ${this.paneOb.sliceMeasure}
+
               </p>
             </h3>
             `
         //put new info in front of notes to canvas element if possible
         this.infoHolder.prepend(rightDiv)
       }
-    // do a redraw
-    this.drawCanvas()
+      // do a redraw
+      this.drawCanvas()
     }
   }
   resize(height, width, margin) {
@@ -671,7 +678,6 @@ class Canvas {
         this.ctx.closePath()
         this.invisictx.closePath()
         // check if its a roilisted
-        console.log(linedata.region)
         if (this.rois[linedata.region] == "activeRoi") {
           this.ctx.strokeStyle = "yellow"
           this.ctx.lineWidth = 5
@@ -686,11 +692,11 @@ class Canvas {
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
             // query the region to color map
+          } else {
+            // leave the section gray
+            this.ctx.fillStyle = "gray";
+            this.ctx.fill();
           }
-        } else {
-          // leave the section gray
-          this.ctx.fillStyle = "gray";
-          this.ctx.fill();
         }
         this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
         this.invisictx.fill()
