@@ -274,17 +274,132 @@ class CtrlOp {
     this.activityFilter = new ActivityFilter(this.ctrlDiv, this.paneOb.initialColData, this.eTarget, this.paneOb)
     this.activityFilter.init()
     // set them at default values
+    // categorical filters
+    if (this.categoricalFilter) {
+      this.categoricalFilter.remove()
+    }
+    this.categoricalFilter = new CategoricalFilter(this.ctrlDiv, this.paneOb)
+    this.categoricalFilter.init()
 
-  }
 
-  other() {
-    // this is a column filter set of options used to further pair down the activity data that eventually colors in the brain regions
-    let catFilter = altColumnFilterHolder()
-    catFilter.create(canvasHolder, data)
-
-    // when we select a column as the value column of the activity data coloring we must grab the data from there and initiate the downstream draw
   }
 }
+
+class CategoricalFilter {
+  // 
+  constructor(ctrlDiv, paneOb) {
+    this.ctrlDiv = ctrlDiv
+    this.paneOb = paneOb
+    this.holder = document.createElement("div")
+    this.holder.className = "altFilterRow"
+    //
+
+  }
+  // process should look like, first have a selector for the column names of the csv
+  // then on select, detect whether you should make numerical or categorical options make selections for the == and != , then the unique column
+  init() {
+    this.ctrlDiv.append(this.holder)
+    // make the first select element of the csv columns
+    this.columnSelector()
+
+
+  }
+  makeSelectUnique() {
+    this.catSelect = document.createElement("select")
+    for (let op of uniqueSet) {
+      let option = document.createElement("option")
+      this.catSelect.append(option)
+      option.value = op
+      option.innerHTML = op
+    }
+  }
+  columnSelector() {
+    this.altColSelect = document.createElement("select")
+    // the column names of the csv
+    for (let colOption in this.paneOb.csvData) {
+      //
+      let option = document.createElement("option")
+      this.altColSelect.append(option)
+      option.value = colOption
+      option.innerHTML = colOption
+    }
+    this.holder.append(this.altColSelect)
+    // on change, replace the other elements with new operation and selector
+    this.altColSelect.onchange = this.generateOperations.bind(this)
+
+  }
+  generateOperations() {
+    // check whether the column is numeric
+    if (parseFloat(this.paneOb.csvData[this.altColSelect.value][0])) {
+      // the value was numeric, t
+    } else {
+      // remove existing elements too
+      // generate the == != select
+      this.operation = document.createElement("select")
+      let equals = document.createElement("option")
+      equals.innerHTML = "=="
+      equals.value = "=="
+      let notEquals = document.createElement("option")
+      notEquals.innerHTML = "!="
+      notEquals.value = "!="
+      this.operation.append(equals)
+      this.operation.append(notEquals)
+      this.holder.append(this.operation)
+
+      // make a populated selector with unique options from the column
+      this.findUniqueElements()
+      this.uniqueSelector = document.createElement("select")
+      for (let op of this.uniqueSet) {
+        //make an option with each
+        let opele = document.createElement("option")
+        opele.value = op
+        opele.innerHTML = op
+        this.uniqueSelector.append(opele)
+      }
+      this.holder.append(this.uniqueSelector)
+      // do mask on both the selectors change
+      this.operation.onchange = this.mask.bind(this)
+      this.uniqueSelector.onchange = this.mask.bind(this)
+    }
+  }
+  // generate a 0 1 vector to determine whether the filter should keep or toss a fillColumn value
+  mask() {
+    this.boolMask = colData.map(e => {
+      if (this.operation.value == "==") {
+        if (e == this.uniqueSelector.value) {
+          return 1
+        }
+        return 0
+      }
+      if (this.operation.value == "!=") {
+        if (e != this.uniqueSelector.value) {
+          return 1
+        }
+        return 0
+      }
+    })
+  }
+  findUniqueElements() {
+    this.uniqueSet = []
+    for (let element of this.paneOb.csvData[this.altColSelect.value]) {
+      if (this.uniqueSet.indexOf(element) == -1) {
+        this.uniqueSet.push(element)
+      }
+    }
+  }
+  filter(activityData) {
+    // apply the boolmask to the data and zero/NaN out the elements that don't fit the cat
+    return activityData.map((e, i) => {
+      if (this.boolMask[i]) {
+        return e
+      }
+      return NaN
+    })
+  }
+}
+
+//  there will be one filter categorical for each pane, and within it there will be options to create a 
+//
 
 class ActivityFilter {
   constructor(ctrlDiv, data, eventTarget, paneOb) {
