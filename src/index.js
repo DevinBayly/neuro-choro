@@ -25,12 +25,12 @@ class Application {
       // finish pane loading
 
       // create ctrloptions
-      this.ctrlop = new CtrlOp(newPane.paneDiv,newPane)
+      this.ctrlop = new CtrlOp(newPane.paneDiv, newPane)
       // loads the data and such
       await this.ctrlop.init()
 
       // create the canvas
-      this.can = new Canvas(newPane.paneDiv,newPane)
+      this.can = new Canvas(newPane.paneDiv, newPane)
       this.can.init()
       // target the canvas with our events
       this.ctrlop.target(this.can.can)
@@ -65,7 +65,7 @@ class CtrlOp {
   //  sliderIndex, sliceName brainView, sliceData, (brain region data)
   //  initialColData, filteredColData,colName, csvData (region fill data)
 
-  constructor(paneDiv,paneOb) {
+  constructor(paneDiv, paneOb) {
     this.paneOb = paneOb
     let ctrlDiv = document.createElement("div")
     ctrlDiv.className = "ctrlDiv"
@@ -252,8 +252,8 @@ class CtrlOp {
       let ind = parseInt(range.value)
       this.paneOb.sliderIndex = ind
       // having trouble getting the
-      let name = this.sliderSlices[this.paneOb.brainView][ind]  
-      this.paneOb.sliceName =name
+      let name = this.sliderSlices[this.paneOb.brainView][ind]
+      this.paneOb.sliceName = name
       this.sliderlabel.innerHTML = this.sliderMeasurements[this.paneOb.brainView][ind]
       this.paneOb.sliceMeasure = this.sliderlabel.innerHTML
       // provide the name of the slice to the canvas drawing machinery
@@ -271,7 +271,7 @@ class CtrlOp {
     if (this.activityFilter) {
       this.activityFilter.remove()
     }
-    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.paneOb.initialColData,this.eTarget,this.paneOb)
+    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.paneOb.initialColData, this.eTarget, this.paneOb)
     this.activityFilter.init()
     // set them at default values
 
@@ -287,7 +287,7 @@ class CtrlOp {
 }
 
 class ActivityFilter {
-  constructor(ctrlDiv, data,eventTarget,paneOb) {
+  constructor(ctrlDiv, data, eventTarget, paneOb) {
     this.min = undefined
     this.max = undefined
     this.ctrlDiv = ctrlDiv
@@ -315,8 +315,8 @@ class ActivityFilter {
     this.maxel = max
     this.minel = min
     // make the draggable elements catch movement events and ensure that the filter method gets called when dragging stops
-    this.maxel.element.addEventListener("divmoved",this.filter.bind(this))
-    this.minel.element.addEventListener("divmoved",this.filter.bind(this))
+    this.maxel.element.addEventListener("divmoved", this.filter.bind(this))
+    this.minel.element.addEventListener("divmoved", this.filter.bind(this))
     // this si the amount of screen space that the filter div's can move, minus the width of the element
     this.width = (rangeWidth.width / 4) - 30
     // create labels
@@ -375,7 +375,7 @@ class ActivityFilter {
       return NaN
     })
     // emit an actual canvas filtered event 
-    let e =new Event("valuefilterchange")
+    let e = new Event("valuefilterchange")
     this.eTarget.dispatchEvent(e)
 
   }
@@ -440,7 +440,7 @@ class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
   // use the ctrlInstance to get things like boundary data, and fill data when the values change
   // use paneOb when there are needs for boundary data or filteredColData
-  constructor(paneDiv,paneOb) {
+  constructor(paneDiv, paneOb) {
     this.can = document.createElement("canvas")
     // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
     // easy hack to keep performance and accuracy of interactivity on canvas
@@ -452,12 +452,13 @@ class Canvas {
     // get data for boundaries and selected value column
     this.paneDiv = paneDiv
     this.paneOb = paneOb
+    this.rois = {}
   }
   // capture the this value, and let teh callback modify the canvas property coldata
   makeRegDataMap() {
     this.regNameToValueMap = {}
     this.paneOb.csvData["regionName"].map((e, i) => {
-      this.regNameToValueMap[e.replace(/\s/,"")] = this.paneOb.filteredColData[i]
+      this.regNameToValueMap[e.replace(/\s/, "")] = this.paneOb.filteredColData[i]
     })
   }
   init() {
@@ -468,7 +469,7 @@ class Canvas {
     this.can.height = 800
     this.can.width = 800
     this.invisican.height = 800
-    this.invisican.width=800
+    this.invisican.width = 800
     //create interpolators for drawing
     //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
     // create the regnametoValueMap
@@ -519,6 +520,11 @@ class Canvas {
     yinterp.setup(this.regionSizes[1], (500 + 10) * this.canvasRatio, this.regionSizes[3], 10)// extra 10is the margin split intwo
     this.yinterp = yinterp
   }
+  // add a tracker for regions clicked
+  // populate elements on canvas like roi's which stores the region name, 
+  // at draw time if region is in the roi list stroke it in purple, or green? ask josh what he thinks?
+  // look at complementary colors for r b 
+  // if they click in the same region again it should toggle it off and out of the listing
   getPos(e) {
     // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
     let rect = this.can.getBoundingClientRect()
@@ -531,22 +537,38 @@ class Canvas {
     let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
     // query the invisible map
     if (this.colToRegMap[JSON.stringify(pix)] != undefined) {
-      // make a little side box with the info in it
-      // take away a chunk of the image at that area
-      let rightDiv = document.createElement("div")
-      rightDiv.id = "tooltip"
-      rightDiv.innerHTML = `
+      let regionName = this.colToRegMap[JSON.stringify(pix)]
+      // add region name to teh rois
+      // what should the value be?
+      if (this.rois[regionName] == "activeRoi") {
+        this.rois[regionName] = "inactiveRoi"
+        // remove the generated tooltip
+        let id = regionName.replace(/[.-_ ]*/,"")
+        document.querySelector(`#${id}tooltip`).remove()
+      } else {
+        this.rois[regionName] = "activeRoi"
+        // make a little side box with the info in it
+        // take away a chunk of the image at that area
+        let rightDiv = document.createElement("div")
+        // remove any improper characters for the id
+        let id = regionName.replace(/[.-_ ]*/,"")
+
+        rightDiv.id = "tooltip"
+        rightDiv.innerHTML = `
+      <div id="${id}tooltip">
             <h3>Selected Region
               <p class="tooltip-child">
-                    ${ this.colToRegMap[JSON.stringify(pix)]}
+                    ${ regionName}
               </p>
               <p class="tooltip-child">
             activity value: hey this is missing!
               </p>
             </h3>
+            <div>
             `
-      //append to canvas element if possible
-      this.innerHolder.append(rightDiv)
+        //append to canvas element if possible
+        this.innerHolder.append(rightDiv)
+      }
     }
   }
   resize(height, width, margin) {
@@ -606,8 +628,8 @@ class Canvas {
 
   drawCanvas() {
     //TODO find better version of how to structure so that the margin can be programmatically set
-    this.ctx.clearRect(0,0,this.can.width,this.can.height)
-    this.invisictx.clearRect(0,0,this.can.width,this.can.height)
+    this.ctx.clearRect(0, 0, this.can.width, this.can.height)
+    this.invisictx.clearRect(0, 0, this.can.width, this.can.height)
     this.ctx.beginPath()
     this.invisictx.beginPath()
     let red = {
@@ -643,13 +665,19 @@ class Canvas {
         }
         this.ctx.closePath()
         this.invisictx.closePath()
+        // check if its a roilisted
+        console.log(linedata.region)
+        if (this.rois[linedata.region] == "activeRoi") {
+          this.ctx.strokeStyle = "green"
+          this.ctx.lineWidth = 5
+          this.ctx.stroke()
+        }
         // these aren't defined yet
         if (this.regNameToValueMap != undefined) {
           if (this.regNameToValueMap[linedata.region]) {
             let scanData = this.regNameToValueMap[linedata.region]
             let t = this.valToColInterp.calc(scanData)
             let lerpc = LerpCol(yellow, red, t, 2)
-            console.log("lerp",lerpc)
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
             // query the region to color map
@@ -659,14 +687,8 @@ class Canvas {
           this.ctx.fillStyle = "gray";
           this.ctx.fill();
         }
-        console.log("regmap",this.regToColMap[linedata.region])
-        console.log(linedata.region)
-        // color on the invisible canvas, this happens regardless of activity
-        //this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
-        
-        //let col = Math.floor(Math.random()*255)
-        //this.invisictx.fillStyle = `rgb(${col},${col},${col})`
-        //this.invisictx.fill()
+        this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
+        this.invisictx.fill()
       }
     }
   }
@@ -677,7 +699,6 @@ let color_collection = (rnum) => {
   ob = {}
   // this is the number of color chunks for each of the rgb channels
   let colordim = Math.ceil(Math.pow(rnum, 1 / 3))
-  console.log(colordim, "is the cube of ", rnum)
   ob.array = []
   // nesting 3 deep, but each should be short
   for (let r = 0; r < colordim; r++) {
