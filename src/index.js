@@ -271,21 +271,21 @@ class CtrlOp {
     if (this.activityFilter) {
       this.activityFilter.remove()
     }
-    this.activityFilter = new ActivityFilter(this.ctrlDiv, this.paneOb.initialColData, this.eTarget, this.paneOb)
+    this.activityFilter = new FillColFilter(this.ctrlDiv, this.paneOb.initialColData, this.eTarget, this.paneOb)
     this.activityFilter.init()
     // set them at default values
     // categorical filters
     if (this.categoricalFilter) {
       this.categoricalFilter.remove()
     }
-    this.categoricalFilter = new CategoricalFilter(this.ctrlDiv, this.paneOb)
+    this.categoricalFilter = new AltColumnFilters(this.ctrlDiv, this.paneOb)
     this.categoricalFilter.init()
 
 
   }
 }
 
-class CategoricalFilter {
+class AltColumnFilters {
   // 
   constructor(ctrlDiv, paneOb) {
     this.ctrlDiv = ctrlDiv
@@ -364,7 +364,7 @@ class CategoricalFilter {
   }
   // generate a 0 1 vector to determine whether the filter should keep or toss a fillColumn value
   mask() {
-    this.boolMask = colData.map(e => {
+    this.boolMask = this.paneOb. .map(e => {
       if (this.operation.value == "==") {
         if (e == this.uniqueSelector.value) {
           return 1
@@ -401,7 +401,7 @@ class CategoricalFilter {
 //  there will be one filter categorical for each pane, and within it there will be options to create a 
 //
 
-class ActivityFilter {
+class FillColFilter {
   constructor(ctrlDiv, data, eventTarget, paneOb) {
     this.min = undefined
     this.max = undefined
@@ -486,7 +486,7 @@ class ActivityFilter {
     // give this information to the paneOb,useful for tooltips
     this.paneOb.valFilterMin = activitymin
     this.paneOb.valFilterMax = activitymax
-    this.paneOb.filteredColData = this.data.map(e => {
+    this.paneOb.filteredFillColData = this.data.map(e => {
       if (e >= activitymin && e <= activitymax) {
         return e
       }
