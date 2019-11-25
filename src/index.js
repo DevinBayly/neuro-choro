@@ -446,8 +446,11 @@ class Canvas {
     // easy hack to keep performance and accuracy of interactivity on canvas
     this.invisican = document.createElement("canvas")
     this.invisican.id = "invisican"
-    this.innerHolder = document.createElement("div")
-    this.innerHolder.className = "innerholder"
+    // makes resizes not affect xy of canvas
+    this.canvasHolder = document.createElement("div")
+    this.canvasHolder.id = "canvasHolder"
+    this.infoHolder = document.createElement("div")
+    this.infoHolder.className = "infoHolder"
     // other versions of teh data will be around later,
     // get data for boundaries and selected value column
     this.paneDiv = paneDiv
@@ -465,10 +468,10 @@ class Canvas {
   }
   init() {
     // setup the canvas
-    this.innerHolder.append(this.can)
-    this.innerHolder.append(this.invisican)
-    this.innerHolder.append(this.ta)
-    this.paneDiv.append(this.innerHolder)
+    this.canvasHolder.append(this.can)
+    this.infoHolder.append(this.ta)
+    this.canvasHolder.append(this.infoHolder)
+    this.paneDiv.append(this.canvasHolder)
     this.can.height = 800
     this.can.width = 800
     this.invisican.height = 800
@@ -546,19 +549,18 @@ class Canvas {
       if (this.rois[regionName] == "activeRoi") {
         this.rois[regionName] = "inactiveRoi"
         // remove the generated tooltip
-        let id = regionName.replace(/[.-_ ]*/, "")
-        document.querySelector(`#${id}tooltip`).remove()
+        let id = regionName.replace(/[-_]/g, "")
+        document.querySelector(`#tooltip${id}`).remove()
       } else {
         this.rois[regionName] = "activeRoi"
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
         // remove any improper characters for the id
-        let id = regionName.replace(/[.-_ ]*/, "")
+        let id = regionName.replace(/[-_]/g, "")
 
-        rightDiv.id = "tooltip"
+        rightDiv.id = "tooltip"+id
         rightDiv.innerHTML = `
-      <div id="${id}tooltip">
             <h3>Selected Region
               <p class="tooltip-child">
                     ${ regionName}
@@ -567,11 +569,12 @@ class Canvas {
             activity value: hey this is missing!
               </p>
             </h3>
-            <div>
             `
-        //append to canvas element if possible
-        this.innerHolder.append(rightDiv)
+        //put new info in front of notes to canvas element if possible
+        this.infoHolder.prepend(rightDiv)
       }
+    // do a redraw
+    this.drawCanvas()
     }
   }
   resize(height, width, margin) {
@@ -670,7 +673,7 @@ class Canvas {
         // check if its a roilisted
         console.log(linedata.region)
         if (this.rois[linedata.region] == "activeRoi") {
-          this.ctx.strokeStyle = "green"
+          this.ctx.strokeStyle = "yellow"
           this.ctx.lineWidth = 5
           this.ctx.stroke()
         }
