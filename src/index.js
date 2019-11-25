@@ -453,6 +453,8 @@ class Canvas {
     this.paneDiv = paneDiv
     this.paneOb = paneOb
     this.rois = {}
+    // setup the text area for note taking
+    this.ta = document.createElement("textarea")
   }
   // capture the this value, and let teh callback modify the canvas property coldata
   makeRegDataMap() {
@@ -465,6 +467,7 @@ class Canvas {
     // setup the canvas
     this.innerHolder.append(this.can)
     this.innerHolder.append(this.invisican)
+    this.innerHolder.append(this.ta)
     this.paneDiv.append(this.innerHolder)
     this.can.height = 800
     this.can.width = 800
@@ -543,7 +546,7 @@ class Canvas {
       if (this.rois[regionName] == "activeRoi") {
         this.rois[regionName] = "inactiveRoi"
         // remove the generated tooltip
-        let id = regionName.replace(/[.-_ ]*/,"")
+        let id = regionName.replace(/[.-_ ]*/, "")
         document.querySelector(`#${id}tooltip`).remove()
       } else {
         this.rois[regionName] = "activeRoi"
@@ -551,7 +554,7 @@ class Canvas {
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
         // remove any improper characters for the id
-        let id = regionName.replace(/[.-_ ]*/,"")
+        let id = regionName.replace(/[.-_ ]*/, "")
 
         rightDiv.id = "tooltip"
         rightDiv.innerHTML = `
@@ -630,8 +633,6 @@ class Canvas {
     //TODO find better version of how to structure so that the margin can be programmatically set
     this.ctx.clearRect(0, 0, this.can.width, this.can.height)
     this.invisictx.clearRect(0, 0, this.can.width, this.can.height)
-    this.ctx.beginPath()
-    this.invisictx.beginPath()
     let red = {
       r: 255,
       g: 0,
@@ -646,7 +647,8 @@ class Canvas {
     for (let region of this.paneOb.sliceData.features) {
       // this is the object that has features, and properties
       for (let coords of region.geometry.coordinates) {
-
+        this.ctx.beginPath()
+        this.invisictx.beginPath()
         // create simplified variable with points and region name
         let linedata = { points: coords, region: region.properties.regionName }
 
