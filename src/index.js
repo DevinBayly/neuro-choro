@@ -292,6 +292,7 @@ class AltColumnFilters {
     this.paneOb = paneOb
     this.holder = document.createElement("div")
     this.holder.className = "altFilterRow"
+    this.expInfo = {}
     //
 
   }
@@ -330,8 +331,26 @@ class AltColumnFilters {
   }
   generateOperations() {
     // check whether the column is numeric
+    this.expInfo["name"] = this.altColSelect.value
     if (parseFloat(this.paneOb.csvData[this.altColSelect.value][0])) {
       // the value was numeric, t
+      this.operation = document.createElement("select")
+      let equals = document.createElement("option")
+      equals.innerHTML = "<"
+      equals.value = "<"
+      let notEquals = document.createElement("option")
+      notEquals.innerHTML = ">"
+      notEquals.value = ">"
+      this.operation.append(equals)
+      this.operation.append(notEquals)
+      this.holder.append(this.operation)
+      // create an input point for value input
+      this.valueSelector = document.createElement("input")
+      this.valueSelector.type = "text"
+      this.holder.append(this.valueSelector)
+      this.operation.onchange = this.mask.bind(this)
+      this.valueSelector.onchange = this.mask.bind(this)
+
     } else {
       // remove existing elements too
       // generate the == != select
@@ -348,31 +367,45 @@ class AltColumnFilters {
 
       // make a populated selector with unique options from the column
       this.findUniqueElements()
-      this.uniqueSelector = document.createElement("select")
+      this.valueSelector = document.createElement("select")
       for (let op of this.uniqueSet) {
         //make an option with each
         let opele = document.createElement("option")
         opele.value = op
         opele.innerHTML = op
-        this.uniqueSelector.append(opele)
+        this.valueSelector.append(opele)
       }
-      this.holder.append(this.uniqueSelector)
+      this.holder.append(this.valueSelector)
       // do mask on both the selectors change
       this.operation.onchange = this.mask.bind(this)
-      this.uniqueSelector.onchange = this.mask.bind(this)
+      this.valueSelector.onchange = this.mask.bind(this)
     }
   }
   // generate a 0 1 vector to determine whether the filter should keep or toss a fillColumn value
   mask() {
+    this.expInfo["operation"] = this.operation.value
+    this.expInfo["value"] = this.valueSelector.value
     this.boolMask = this.paneOb.csvData[this.altColSelect.value].map(e => {
       if (this.operation.value == "==") {
-        if (e == this.uniqueSelector.value) {
+        if (e == this.valueSelector.value) {
           return 1
         }
         return 0
       }
       if (this.operation.value == "!=") {
-        if (e != this.uniqueSelector.value) {
+        if (e != this.valueSelector.value) {
+          return 1
+        }
+        return 0
+      }
+      if (this.operation.value == ">") {
+        if (e > parseFloat(this.valueSelector.value)) {
+          return 1
+        }
+        return 0
+      }
+      if (this.operation.value == "<") {
+        if (e < parseFloat(this.valueSelector.value)) {
           return 1
         }
         return 0
@@ -441,6 +474,12 @@ class AltHolder {
       }
     })
 
+    // extract filter name information to use in the tooltip
+    this.paneOb.altFilterInfo =""
+    for (let altfilter of this.altfilters) {
+      //
+      this.paneOb.altFilterInfo += JSON.stringify(altfilter.expInfo)
+    }
   }
 
 }
@@ -758,7 +797,7 @@ class Canvas {
             </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
             </p><p>slice: ${this.paneOb.sliceMeasure}
 
-              </p>
+              </p><p>altfilterinfo:${this.paneOb.altFilterInfo}</p>
             </h3>
             `
         //put new info in front of notes to canvas element if possible
