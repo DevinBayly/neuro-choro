@@ -278,7 +278,7 @@ class CtrlOp {
     if (this.categoricalFilter) {
       this.categoricalFilter.remove()
     }
-    this.categoricalFilter = new AltColumnFilters(this.ctrlDiv, this.paneOb)
+    this.categoricalFilter = new AltHolder(this.ctrlDiv, this.paneOb)
     this.categoricalFilter.init()
 
 
@@ -287,8 +287,8 @@ class CtrlOp {
 
 class AltColumnFilters {
   // 
-  constructor(ctrlDiv, paneOb) {
-    this.ctrlDiv = ctrlDiv
+  constructor(outerHolder, paneOb) {
+    this.outerHolder = outerHolder
     this.paneOb = paneOb
     this.holder = document.createElement("div")
     this.holder.className = "altFilterRow"
@@ -298,7 +298,7 @@ class AltColumnFilters {
   // process should look like, first have a selector for the column names of the csv
   // then on select, detect whether you should make numerical or categorical options make selections for the == and != , then the unique column
   init() {
-    this.ctrlDiv.append(this.holder)
+    this.outerHolder.append(this.holder)
     // make the first select element of the csv columns
     this.columnSelector()
 
@@ -378,7 +378,10 @@ class AltColumnFilters {
         return 0
       }
     })
-    this.filter()
+    // emit event on the holder that the altchanged
+    let altchange = new Event("altchange")
+    this.outerHolder.dispatchEvent(altchange)
+
   }
   findUniqueElements() {
     this.uniqueSet = []
@@ -389,19 +392,58 @@ class AltColumnFilters {
     }
   }
   // this should probably live on the alt filter holder so that multiple filters can have their boolmasks work on this.
-  filter() {
-    // apply the boolmask to the data and zero/NaN out the elements that don't fit the cat
-    this.paneOb.filteredAltColData = this.paneOb.initialColData.map((e, i) => {
-      if (this.boolMask[i]) {
-        return e
-      }
-      return NaN
-    })
-  }
 }
+
+// create a alt column filter row holder, have each of the change elements emit an event that iterates over the bool masks, and creates a sintgle altfiltered column data set, could even hook up the result of the filter to emit event thtat triggers canvas setup() draw()
 
 //  there will be one filter categorical for each pane, and within it there will be options to create a 
 //
+
+class AltHolder {
+  constructor(ctrlDiv, paneOb) {
+    // button and larger div for the elements to get added in
+    this.ctrlDiv = ctrlDiv
+    this.paneOb = paneOb
+    this.createAltRowBtn = document.createElement("button")
+    this.createAltRowBtn.innerHTML = "Create Alt Column Filter"
+    this.altfilters = []
+  }
+  init() {
+    this.holder = document.createElement("div")
+    this.holder.id = "altcolholder"
+    this.createAltRowBtn.onclick = this.addRow.bind(this)
+    this.holder.append(this.createAltRowBtn)
+    this.ctrlDiv.append(this.holder)
+  }
+  addRow() {
+    let newAlt = new AltColumnFilters(this.holder, this.paneOb)
+    newAlt.init()
+    this.altfilters.push(newAlt)
+    this.holder.addEventListener("altchange", this.filter.bind(this))
+
+
+  }
+  filter() {
+    //iterate over the altfilters, and then only let through the ones that work with each bool mask
+    // reduce on the intiial paneob data iterate over all the individual boolmask values
+    this.paneOb.filteredAltColData = this.paneOb.initialColData.map((e, i) => {
+      let isNa = false
+      for (let altfilter of this.altfilters) {
+        if (altfilter.boolMask[i] == 0) {
+          isNa = true
+          break
+        }
+      }
+      if (isNa) {
+        return NaN
+      } else {
+        return e
+      }
+    })
+
+  }
+
+}
 
 class FillColFilter {
   constructor(ctrlDiv, data, eventTarget, paneOb) {
