@@ -364,7 +364,7 @@ class AltColumnFilters {
   }
   // generate a 0 1 vector to determine whether the filter should keep or toss a fillColumn value
   mask() {
-    this.boolMask = this.paneOb. .map(e => {
+    this.boolMask = this.paneOb.csvData[this.altColSelect.value].map(e => {
       if (this.operation.value == "==") {
         if (e == this.uniqueSelector.value) {
           return 1
@@ -378,6 +378,7 @@ class AltColumnFilters {
         return 0
       }
     })
+    this.filter()
   }
   findUniqueElements() {
     this.uniqueSet = []
@@ -387,9 +388,10 @@ class AltColumnFilters {
       }
     }
   }
-  filter(activityData) {
+  // this should probably live on the alt filter holder so that multiple filters can have their boolmasks work on this.
+  filter() {
     // apply the boolmask to the data and zero/NaN out the elements that don't fit the cat
-    return activityData.map((e, i) => {
+    this.paneOb.filteredAltColData = this.paneOb.initialColData.map((e, i) => {
       if (this.boolMask[i]) {
         return e
       }
@@ -581,7 +583,7 @@ class Canvas {
   makeRegDataMap() {
     this.regNameToValueMap = {}
     this.paneOb.csvData["regionName"].map((e, i) => {
-      this.regNameToValueMap[e.replace(/\s/, "")] = this.paneOb.filteredColData[i]
+      this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
     })
   }
   init() {
@@ -623,6 +625,31 @@ class Canvas {
   }
   // this is meant to query the ctrlInstance for what view and slice index we are on
   setupCanvas() {
+    // mingle the two filtered datasets 
+    this.fillData = []
+    // if both data filters aren't specified use whole initial range
+    if (this.paneOb.filteredFillColData == undefined &&
+      this.paneOb.filteredAltColData == undefined) {
+      this.fillData = this.paneOb.initialColData
+    } else if (this.paneOb.filteredFillColData == undefined && this.paneOb.filteredAltColData != undefined) {
+      this.fillData = this.paneOb.filteredAltColData
+    } else if (this.paneOb.filteredFillColData != undefined && this.paneOb.filteredAltColData == undefined) {
+      this.fillData = this.paneOb.filteredFillColData
+    } else {
+      // if only the activity is specified
+      // if both filters are around
+      for (let i = 0; i < this.paneOb.initialColData.length; i++) {
+        // if the two different filters have non NAN at that index add it to fill
+
+        if (isNaN(this.paneOb.filteredAltColData[i]) || isNaN(this.paneOb.filteredFillColData[i])) {
+          this.fillData.push(NaN)
+        } else {
+          this.fillData.push(this.paneOb.initialColData[i])
+
+        }
+
+      }
+    }
     // will update the map used in the draw to determine the color of a region
     this.makeRegDataMap()
     // initialize the color setting for the invisican
@@ -739,7 +766,7 @@ class Canvas {
   calcValueColMinMax() {
     this.scanDatamin = 0
     this.scanDatamax = 0
-    for (let row of this.paneOb.filteredColData) {
+    for (let row of this.fillData) {
       if (row > this.scanDatamax) {
         this.scanDatamax = parseFloat(row)
       }
