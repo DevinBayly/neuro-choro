@@ -844,17 +844,12 @@ class Canvas {
     // query the invisible map
     if (this.colToRegMap[JSON.stringify(pix)] != undefined) {
       let regionName = this.colToRegMap[JSON.stringify(pix)]
-      // add region name to teh rois
-      // what should the value be?
       if (this.paneOb.rois[regionName] != undefined) {
-        if (this.paneOb.rois[regionName].status == "activeRoi") {
-          this.paneOb.rois[regionName].status = "inactiveRoi"
+          delete this.paneOb.rois[regionName]
           // remove the generated tooltip
           let id = regionName.replace(/[-_]/g, "")
           document.querySelector(`#tooltip${id}`).remove()
-        }
-      } else {
-        this.paneOb.rois[regionName] = { "status": "activeRoi" }
+      } else{
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
@@ -879,10 +874,7 @@ class Canvas {
         //put new info in front of notes to canvas element if possible
         this.infoHolder.prepend(rightDiv)
         // add tooltip to the rois tooltip array
-        if (this.paneOb.rois[regionName].tooltipArray == undefined) {
-          this.paneOb.rois[regionName].tooltipArray = []
-        }
-        this.paneOb.rois[regionName].tooltipArray.push(rightDiv.innerHTML)
+        this.paneOb.rois[regionName]=rightDiv.innerHTML
       }
       // do a redraw
       this.drawCanvas()
@@ -983,7 +975,7 @@ class Canvas {
         this.invisictx.closePath()
         // check if its a roilisted
         if (this.paneOb.rois[linedata.region]) {
-          if (this.paneOb.rois[linedata.region].status == "activeRoi") {
+          if (this.paneOb.rois[linedata.region]) {
             this.ctx.strokeStyle = "yellow"
             this.ctx.lineWidth = 5
             this.ctx.stroke()
