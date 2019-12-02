@@ -320,8 +320,14 @@ class AltColumnFilters {
   // then on select, detect whether you should make numerical or categorical options make selections for the == and != , then the unique column
   init() {
     this.outerHolder.append(this.holder)
+    this.removeBtn = document.createElement("button")
+    this.removeBtn.innerHTML = "X"
+    this.removeBtn.addEventListener("click", this.removeSelf.bind(this))
+    this.holder.append(this.removeBtn)
     // make the first select element of the csv columns
     this.columnSelector()
+    // add x button that removes the whole element, double check 
+    // delete
 
 
   }
@@ -444,7 +450,13 @@ class AltColumnFilters {
       }
     }
   }
-  // this should probably live on the alt filter holder so that multiple filters can have their boolmasks work on this.
+  // make it possible to take the filter out
+  removeSelf() {
+    // triggered by clicking the exit button
+    this.holder.remove()
+    // take self out of the filter list on the AltHolder ob
+    this.removeFromList(this)
+  }
 }
 
 // create a alt column filter row holder, have each of the change elements emit an event that iterates over the bool masks, and creates a sintgle altfiltered column data set, could even hook up the result of the filter to emit event thtat triggers canvas setup() draw()
@@ -467,10 +479,18 @@ class AltHolder {
     this.createAltRowBtn.onclick = this.addRow.bind(this)
     this.holder.append(this.createAltRowBtn)
     this.ctrlDiv.append(this.holder)
+    this.idCount = 0
+
   }
   addRow() {
     let newAlt = new AltColumnFilters(this.holder, this.paneOb)
     newAlt.init()
+    newAlt.id = this.idCount
+    this.idCount++
+    // add the removal function to take it from the list too
+
+    newAlt.removeFromList = this.removeFromList.bind(this)
+
     this.altfilters.push(newAlt)
     this.holder.addEventListener("altchange", this.filter.bind(this))
 
@@ -493,6 +513,9 @@ class AltHolder {
         return e
       }
     })
+    let e = new Event("filterChange")
+    // get the canvas element
+    this.paneOb.paneDiv.querySelector("canvas").dispatchEvent(e)
 
     // extract filter name information to use in the tooltip
     this.paneOb.altFilterInfo = ""
@@ -500,6 +523,23 @@ class AltHolder {
       //
       this.paneOb.altFilterInfo += JSON.stringify(altfilter.expInfo)
     }
+  }
+  removeFromList(ele) {
+    // go through the list and find the one that has the same values for the filtering elements
+    // columnselector && operation && valueSelector
+    let index = 0
+    for (let filter of this.altfilters) {
+      if (ele.id == filter.id) {
+        // remove it from the list 
+        this.altfilters.splice(index, 1)
+        // trigger remask calculation so as not to confuse whats active
+        this.filter()
+
+      }
+      index += 1
+    }
+
+
   }
 
 }
@@ -596,7 +636,7 @@ class FillColFilter {
       return NaN
     })
     // emit an actual canvas filtered event 
-    let e = new Event("valuefilterchange")
+    let e = new Event("filterChange")
     this.eTarget.dispatchEvent(e)
 
   }
@@ -676,9 +716,10 @@ class Canvas {
     // get data for boundaries and selected value column
     this.paneDiv = paneDiv
     this.paneOb = paneOb
-    this.rois = {}
+    this.paneOb.rois = {}
     // setup the text area for note taking
-    this.ta = document.createElement("textarea")
+    this.paneOb.ta = document.createElement("textarea")
+    //thi
   }
   // capture the this value, and let teh callback modify the canvas property coldata
   makeRegDataMap() {
@@ -690,7 +731,7 @@ class Canvas {
   init() {
     // setup the canvas
     this.canvasHolder.append(this.can)
-    this.infoHolder.append(this.ta)
+    this.infoHolder.append(this.paneOb.ta)
     this.canvasHolder.append(this.infoHolder)
     this.paneDiv.append(this.canvasHolder)
     this.can.height = 800
@@ -703,7 +744,7 @@ class Canvas {
     this.ctx = this.can.getContext("2d")
     this.invisictx = this.invisican.getContext("2d")
     // take care of binding various functions to the events that get emitted
-    // events to track valcolchange,radiobuttonchanged,sliderchange, valuefilterchange
+    // events to track valcolchange,radiobuttonchanged,sliderchange, filterChange
     // valcolchange we need to wait until something happens with the sliders?
 
     this.can.addEventListener("click", this.getPos.bind(this))
@@ -718,7 +759,7 @@ class Canvas {
     })
 
     //activity filter change, and valcolchange mean we must update our version of the ctrlInstance coldat, requires updating the regNameToValMap also
-    this.can.addEventListener("valuefilterchange", () => {
+    this.can.addEventListener("filterChange", () => {
       this.setupCanvas()
       this.drawCanvas()
     })
@@ -792,15 +833,15 @@ class Canvas {
       let regionName = this.colToRegMap[JSON.stringify(pix)]
       // add region name to teh rois
       // what should the value be?
-      if (this.rois[regionName] != undefined) {
-        if (this.rois[regionName].status == "activeRoi") {
-          this.rois[regionName].status = "inactiveRoi"
+      if (this.paneOb.rois[regionName] != undefined) {
+        if (this.paneOb.rois[regionName].status == "activeRoi") {
+          this.paneOb.rois[regionName].status = "inactiveRoi"
           // remove the generated tooltip
           let id = regionName.replace(/[-_]/g, "")
           document.querySelector(`#tooltip${id}`).remove()
         }
       } else {
-        this.rois[regionName].status = "activeRoi"
+        this.paneOb.rois[regionName] = { "status": "activeRoi" }
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
@@ -825,10 +866,10 @@ class Canvas {
         //put new info in front of notes to canvas element if possible
         this.infoHolder.prepend(rightDiv)
         // add tooltip to the rois tooltip array
-        if (this.rois.tooltipArray == undefined) {
-          this.rois.tooltipArray = []
+        if (this.paneOb.rois[regionName].tooltipArray == undefined) {
+          this.paneOb.rois[regionName].tooltipArray = []
         }
-        this.rois.tooltipArray.push(rightDiv.innerHTML)
+        this.paneOb.rois[regionName].tooltipArray.push(rightDiv.innerHTML)
       }
       // do a redraw
       this.drawCanvas()
@@ -928,8 +969,8 @@ class Canvas {
         this.ctx.closePath()
         this.invisictx.closePath()
         // check if its a roilisted
-        if (this.rois[linedata.region]) {
-          if (this.rois[linedata.region].status == "activeRoi") {
+        if (this.paneOb.rois[linedata.region]) {
+          if (this.paneOb.rois[linedata.region].status == "activeRoi") {
             this.ctx.strokeStyle = "yellow"
             this.ctx.lineWidth = 5
             this.ctx.stroke()
