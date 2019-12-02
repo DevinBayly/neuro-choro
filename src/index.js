@@ -30,7 +30,7 @@ class Application {
       await this.ctrlop.init()
 
       // create the canvas
-      this.can = new Canvas(newPane.paneDiv, newPane)
+      this.can = new Canvas(newPane.paneDiv, newPane, 500,30)
       this.can.init()
       // target the canvas with our events
       this.ctrlop.target(this.can.can)
@@ -107,6 +107,7 @@ class CtrlOp {
     this.mkradio("coronal")
     // selected is the radio button we have selected
     this.paneOb.brainView = "sagittal" // default
+    this.paneOb.paneDiv.querySelector("#radiosagittal").checked = true
 
     // instantiate loader
     await this.loader()
@@ -701,7 +702,9 @@ class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
   // use the ctrlInstance to get things like boundary data, and fill data when the values change
   // use paneOb when there are needs for boundary data or filteredColData
-  constructor(paneDiv, paneOb) {
+  constructor(paneDiv, paneOb, size,margin) {
+    this.margin = margin
+    this.size = size
     this.can = document.createElement("canvas")
     // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
     // easy hack to keep performance and accuracy of interactivity on canvas
@@ -724,9 +727,16 @@ class Canvas {
   // capture the this value, and let teh callback modify the canvas property coldata
   makeRegDataMap() {
     this.regNameToValueMap = {}
-    this.paneOb.csvData["regionName"].map((e, i) => {
-      this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
-    })
+    // drawregions without fill if nothing selected yet
+    if (this.fillData == undefined) {
+      this.paneOb.csvData["regionName"].map((e, i) => {
+        this.regNameToValueMap[e.replace(/\s/, "")] = NaN
+      })
+    } else {
+      this.paneOb.csvData["regionName"].map((e, i) => {
+        this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
+      })
+    }
   }
   init() {
     // setup the canvas
@@ -734,10 +744,10 @@ class Canvas {
     this.infoHolder.append(this.paneOb.ta)
     this.canvasHolder.append(this.infoHolder)
     this.paneDiv.append(this.canvasHolder)
-    this.can.height = 800
-    this.can.width = 800
-    this.invisican.height = 800
-    this.invisican.width = 800
+    this.can.height = this.size
+    this.can.width = this.size
+    this.invisican.height = this.size
+    this.invisican.width = this.size
     //create interpolators for drawing
     //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
     // create the regnametoValueMap
@@ -804,13 +814,16 @@ class Canvas {
       this.colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
     })
     this.calcRegionSizeGlobal()
-    this.calcValueColMinMax()
+    // this will happen at the beginning before column selection
+    if (this.fillData != undefined) {
+      this.calcValueColMinMax()
+    }
     // create the region data to screen space interpolators
     let xinterp = interpolator()
-    xinterp.setup(this.regionSizes[0], 0 + 10, this.regionSizes[2], 500 + 10)
+    xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width - this.margin)
     this.xinterp = xinterp
     let yinterp = interpolator()
-    yinterp.setup(this.regionSizes[1], (500 + 10) * this.canvasRatio, this.regionSizes[3], 10)// extra 10is the margin split intwo
+    yinterp.setup(this.regionSizes[1], (this.can.height - this.margin) * this.canvasRatio, this.regionSizes[3], this.margin)// extra 10is the margin split intwo
     this.yinterp = yinterp
   }
   // add a tracker for regions clicked
