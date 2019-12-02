@@ -53,7 +53,9 @@ class Application {
     // iterate over the panes
     for (let pane of this.panes) {
       // collect the relevant information
-      expOb.panes.push(pane)
+      // omit the boundary file
+      let {regionBoundaryData,...rest} = pane
+      expOb.panes.push(rest)
     }
     let a = document.createElement("a")
     a.download = "test.json"     // create a fake a tag with the download property linked to a blob containing the kson, and then click it
@@ -481,6 +483,7 @@ class AltHolder {
     this.holder.append(this.createAltRowBtn)
     this.ctrlDiv.append(this.holder)
     this.idCount = 0
+    // attach the altfilters to the paneOb for export
 
   }
   addRow() {
