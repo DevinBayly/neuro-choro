@@ -41,6 +41,26 @@ class Application {
     this.btn.innerHTML = "Add Pane"
     this.btndiv.append(this.btn)
     document.body.append(this.btndiv)
+    // create the export button also 
+    this.exportBtn = document.createElement("button")
+    this.exportBtn.innerHTML = "Export"
+    this.exportBtn.addEventListener("click", this.export.bind(this))
+    document.body.append(this.exportBtn)
+  }
+  export() {
+    // create the export ob
+    let expOb = { panes: [] }
+    // iterate over the panes
+    for (let pane of this.panes) {
+      // collect the relevant information
+      expOb.panes.push(pane)
+    }
+    let a = document.createElement("a")
+    a.download = "test.json"     // create a fake a tag with the download property linked to a blob containing the kson, and then click it
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(expOb)]))
+    a.click()
+
+
   }
 }
 
@@ -475,7 +495,7 @@ class AltHolder {
     })
 
     // extract filter name information to use in the tooltip
-    this.paneOb.altFilterInfo =""
+    this.paneOb.altFilterInfo = ""
     for (let altfilter of this.altfilters) {
       //
       this.paneOb.altFilterInfo += JSON.stringify(altfilter.expInfo)
@@ -772,13 +792,15 @@ class Canvas {
       let regionName = this.colToRegMap[JSON.stringify(pix)]
       // add region name to teh rois
       // what should the value be?
-      if (this.rois[regionName] == "activeRoi") {
-        this.rois[regionName] = "inactiveRoi"
-        // remove the generated tooltip
-        let id = regionName.replace(/[-_]/g, "")
-        document.querySelector(`#tooltip${id}`).remove()
+      if (this.rois[regionName] != undefined) {
+        if (this.rois[regionName].status == "activeRoi") {
+          this.rois[regionName].status = "inactiveRoi"
+          // remove the generated tooltip
+          let id = regionName.replace(/[-_]/g, "")
+          document.querySelector(`#tooltip${id}`).remove()
+        }
       } else {
-        this.rois[regionName] = "activeRoi"
+        this.rois[regionName].status = "activeRoi"
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
@@ -802,6 +824,11 @@ class Canvas {
             `
         //put new info in front of notes to canvas element if possible
         this.infoHolder.prepend(rightDiv)
+        // add tooltip to the rois tooltip array
+        if (this.rois.tooltipArray == undefined) {
+          this.rois.tooltipArray = []
+        }
+        this.rois.tooltipArray.push(rightDiv.innerHTML)
       }
       // do a redraw
       this.drawCanvas()
@@ -901,11 +928,14 @@ class Canvas {
         this.ctx.closePath()
         this.invisictx.closePath()
         // check if its a roilisted
-        if (this.rois[linedata.region] == "activeRoi") {
-          this.ctx.strokeStyle = "yellow"
-          this.ctx.lineWidth = 5
-          this.ctx.stroke()
+        if (this.rois[linedata.region]) {
+          if (this.rois[linedata.region].status == "activeRoi") {
+            this.ctx.strokeStyle = "yellow"
+            this.ctx.lineWidth = 5
+            this.ctx.stroke()
+          }
         }
+
         // these aren't defined yet
         if (this.regNameToValueMap != undefined) {
           if (this.regNameToValueMap[linedata.region]) {
