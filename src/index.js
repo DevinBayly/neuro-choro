@@ -29,19 +29,19 @@ class Application {
     // create the import button
     this.importBtn = document.createElement("button")
     this.importBtn.innerHTML = "Import"
-    this.importBtn.addEventListener("click",this.import.bind(this))
+    this.importBtn.addEventListener("click", this.import.bind(this))
     document.body.append(this.importBtn)
   }
   async import() {
-    fetch("./test.json").then(res=> res.json()).then(async e => {
+    fetch("./test.json").then(res => res.json()).then(async e => {
       // iterate over the panes
-      for(let pane of e.panes) {
+      for (let pane of e.panes) {
         console.log(pane)
         await this.addPane()
         // select correct options
-        let activePane = this.panes[this.panes.length-1]
+        let activePane = this.panes[this.panes.length - 1]
         // set the fillCol to the previous 
-        let fillSelector =  activePane.paneDiv.querySelector("#fillCol") 
+        let fillSelector = activePane.paneDiv.querySelector("#fillCol")
         fillSelector.value = pane.fillColValue
         // emit change event to trigger drawing
         fillSelector.dispatchEvent(new Event("change"))
@@ -55,6 +55,11 @@ class Application {
         slider.value = pane.sliderIndex
         // dispatch the event that draws the canvas for the slider change
         slider.dispatchEvent(new Event("input"))
+        // add info to the fillFilter boxes
+        // but not all sessions will use it so check first
+        if (pane.valFilterMax) {
+          activePane.updateFillFilter(pane.valFilterMin, pane.valFilterMax)
+        }
 
       }
     })
@@ -66,7 +71,7 @@ class Application {
     for (let pane of this.panes) {
       // collect the relevant information
       // omit the boundary file
-      let {regionBoundaryData,...rest} = pane
+      let { regionBoundaryData, ...rest } = pane
       expOb.panes.push(rest)
     }
     let a = document.createElement("a")
@@ -77,24 +82,24 @@ class Application {
 
   }
   async addPane() {
-      let newPane = new Pane(this.panes.length)
-      // pass reference to pane, to be used by ctrlOp and Canvas
-      newPane.regionBoundaryData = this.regionBoundaryData
-      // here's the point where we can connect up the various parts
-      // finish pane loading
+    let newPane = new Pane(this.panes.length)
+    // pass reference to pane, to be used by ctrlOp and Canvas
+    newPane.regionBoundaryData = this.regionBoundaryData
+    // here's the point where we can connect up the various parts
+    // finish pane loading
 
-      // create ctrloptions
-      this.ctrlop = new CtrlOp(newPane.paneDiv, newPane)
-      // loads the data and such
-      await this.ctrlop.init()
+    // create ctrloptions
+    this.ctrlop = new CtrlOp(newPane.paneDiv, newPane)
+    // loads the data and such
+    await this.ctrlop.init()
 
-      // create the canvas
-      this.can = new Canvas(newPane.paneDiv, newPane, 500,30)
-      this.can.init()
-      // target the canvas with our events
-      this.ctrlop.target(this.can.can)
+    // create the canvas
+    this.can = new Canvas(newPane.paneDiv, newPane, 500, 30)
+    this.can.init()
+    // target the canvas with our events
+    this.ctrlop.target(this.can.can)
 
-      this.panes.push(newPane)
+    this.panes.push(newPane)
   }
 }
 
@@ -220,7 +225,7 @@ class CtrlOp {
 
     // this is the selection element that is populated by the column names in the csv
     let valueColumnSelect = document.createElement("select")
-    valueColumnSelect.id= "fillCol"
+    valueColumnSelect.id = "fillCol"
     for (let key of Object.keys(this.paneOb.csvData)) {
       let option = document.createElement("option")
       option.value = key
@@ -660,6 +665,16 @@ class FillColFilter {
     // once placed, set this to keep in correct spot, make them sit on same line
     max.element.style.top = `-30px` // overlap the element with the other
     max.element.style.left = "50px"
+
+    // provide a way to initialize values via styling from import
+    this.paneOb.updateFillFilter = (importMin, importMax) => {
+      // move the divs
+      min.element.style.left = importMin + "px"
+      max.element.style.left = importMax + "px"
+      // populate the instance variables, and labels
+      min.additionalLimit(importMin)
+      max.additionalLimit(importMax)
+    }
   }
   filter() {
     // calculate the actual min activity value
@@ -740,7 +755,7 @@ class Canvas {
   // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
   // use the ctrlInstance to get things like boundary data, and fill data when the values change
   // use paneOb when there are needs for boundary data or filteredColData
-  constructor(paneDiv, paneOb, size,margin) {
+  constructor(paneDiv, paneOb, size, margin) {
     this.margin = margin
     this.size = size
     this.can = document.createElement("canvas")
@@ -883,11 +898,11 @@ class Canvas {
     if (this.colToRegMap[JSON.stringify(pix)] != undefined) {
       let regionName = this.colToRegMap[JSON.stringify(pix)]
       if (this.paneOb.rois[regionName] != undefined) {
-          delete this.paneOb.rois[regionName]
-          // remove the generated tooltip
-          let id = regionName.replace(/[-_]/g, "")
-          document.querySelector(`#tooltip${id}`).remove()
-      } else{
+        delete this.paneOb.rois[regionName]
+        // remove the generated tooltip
+        let id = regionName.replace(/[-_]/g, "")
+        document.querySelector(`#tooltip${id}`).remove()
+      } else {
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         let rightDiv = document.createElement("div")
@@ -912,7 +927,7 @@ class Canvas {
         //put new info in front of notes to canvas element if possible
         this.infoHolder.prepend(rightDiv)
         // add tooltip to the rois tooltip array
-        this.paneOb.rois[regionName]=rightDiv.innerHTML
+        this.paneOb.rois[regionName] = rightDiv.innerHTML
       }
       // do a redraw
       this.drawCanvas()
