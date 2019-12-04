@@ -16,8 +16,67 @@ class Application {
     this.btndiv = document.createElement("div")
     this.btndiv.id = "btnholder"
     this.btn = document.createElement("button")
-    this.btn.onclick = async () => {
-      // create a pane
+    this.btn.onclick = this.addPane.bind(this)
+    this.btn.setAttribute("id", "addbtn")
+    this.btn.innerHTML = "Add Pane"
+    this.btndiv.append(this.btn)
+    document.body.append(this.btndiv)
+    // create the export button also 
+    this.exportBtn = document.createElement("button")
+    this.exportBtn.innerHTML = "Export"
+    this.exportBtn.addEventListener("click", this.export.bind(this))
+    document.body.append(this.exportBtn)
+    // create the import button
+    this.importBtn = document.createElement("button")
+    this.importBtn.innerHTML = "Import"
+    this.importBtn.addEventListener("click",this.import.bind(this))
+    document.body.append(this.importBtn)
+  }
+  async import() {
+    fetch("./test.json").then(res=> res.json()).then(async e => {
+      // iterate over the panes
+      for(let pane of e.panes) {
+        console.log(pane)
+        await this.addPane()
+        // select correct options
+        let activePane = this.panes[this.panes.length-1]
+        // set the fillCol to the previous 
+        let fillSelector =  activePane.paneDiv.querySelector("#fillCol") 
+        fillSelector.value = pane.fillColValue
+        // emit change event to trigger drawing
+        fillSelector.dispatchEvent(new Event("change"))
+
+        // set the view correctly,
+        activePane.brainView = pane.brainView
+        let radio = activePane.paneDiv.querySelector(`#radio${pane.brainView}`)
+        radio.checked = true
+        // set the slice of the view 
+        let slider = activePane.paneDiv.querySelector("#rangeslider")
+        slider.value = pane.sliderIndex
+        // dispatch the event that draws the canvas for the slider change
+        slider.dispatchEvent(new Event("input"))
+
+      }
+    })
+  }
+  export() {
+    // create the export ob
+    let expOb = { panes: [] }
+    // iterate over the panes
+    for (let pane of this.panes) {
+      // collect the relevant information
+      // omit the boundary file
+      let {regionBoundaryData,...rest} = pane
+      expOb.panes.push(rest)
+    }
+    let a = document.createElement("a")
+    a.download = "test.json"     // create a fake a tag with the download property linked to a blob containing the kson, and then click it
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(expOb)]))
+    a.click()
+
+
+  }
+  async addPane() {
       let newPane = new Pane(this.panes.length)
       // pass reference to pane, to be used by ctrlOp and Canvas
       newPane.regionBoundaryData = this.regionBoundaryData
@@ -36,33 +95,6 @@ class Application {
       this.ctrlop.target(this.can.can)
 
       this.panes.push(newPane)
-    }
-    this.btn.setAttribute("id", "addbtn")
-    this.btn.innerHTML = "Add Pane"
-    this.btndiv.append(this.btn)
-    document.body.append(this.btndiv)
-    // create the export button also 
-    this.exportBtn = document.createElement("button")
-    this.exportBtn.innerHTML = "Export"
-    this.exportBtn.addEventListener("click", this.export.bind(this))
-    document.body.append(this.exportBtn)
-  }
-  export() {
-    // create the export ob
-    let expOb = { panes: [] }
-    // iterate over the panes
-    for (let pane of this.panes) {
-      // collect the relevant information
-      // omit the boundary file
-      let {regionBoundaryData,...rest} = pane
-      expOb.panes.push(rest)
-    }
-    let a = document.createElement("a")
-    a.download = "test.json"     // create a fake a tag with the download property linked to a blob containing the kson, and then click it
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(expOb)]))
-    a.click()
-
-
   }
 }
 
@@ -188,6 +220,7 @@ class CtrlOp {
 
     // this is the selection element that is populated by the column names in the csv
     let valueColumnSelect = document.createElement("select")
+    valueColumnSelect.id= "fillCol"
     for (let key of Object.keys(this.paneOb.csvData)) {
       let option = document.createElement("option")
       option.value = key
@@ -196,6 +229,8 @@ class CtrlOp {
     }
     this.ctrlDiv.append(valueColumnSelect)
     valueColumnSelect.onchange = () => {
+      // make access to the selector possible
+      this.paneOb.fillColValue = valueColumnSelect.value
       // parse the data into numeric
       let numericData = this.paneOb.csvData[valueColumnSelect.value].map(e => parseFloat(e))
       this.paneOb.initialColData = numericData
