@@ -60,6 +60,30 @@ class Application {
         if (pane.valFilterMax) {
           activePane.updateFillFilter(pane.valFilterMin, pane.valFilterMax)
         }
+        if (pane.altFiltersState) {
+          // iterate over the altfilters used
+          let btn = document.querySelector("#altfilterbutton")
+          for (let key in pane.altFiltersState) {
+            let filterSettings = pane.altFiltersState[key]
+            // click to generate a filter row
+            btn.click()
+            // query to find colVal selector
+            // take the last which will be the most recent addition
+            let row = Array(...document.querySelectorAll(".altFilterRow")).pop()
+            let rowSelect = row.querySelector("#colname")
+            // assign value to the selector from import
+            // NOTE requires the correct csv to be loaded already too
+            rowSelect.value =  filterSettings.colname
+            rowSelect.dispatchEvent(new Event("change"))
+            // select the correct operations values too
+            let op = row.querySelector("#op")
+            op.value = filterSettings.op
+            let val = row.querySelector("#val")
+            val.value = filterSettings.val
+            // emit a changed to trigger masking
+            val.dispatchEvent(new Event("change"))
+          }
+        }
 
       }
     })
@@ -376,6 +400,7 @@ class AltColumnFilters {
   }
   makeSelectUnique() {
     this.catSelect = document.createElement("select")
+    this.catSelect.id = "val"
     for (let op of uniqueSet) {
       let option = document.createElement("option")
       this.catSelect.append(option)
@@ -386,6 +411,7 @@ class AltColumnFilters {
   columnSelector() {
     this.altColSelect = document.createElement("select")
     // the column names of the csv
+    this.altColSelect.id = "colname"
     for (let colOption in this.paneOb.csvData) {
       //
       let option = document.createElement("option")
@@ -405,6 +431,7 @@ class AltColumnFilters {
     if (parseFloat(this.paneOb.csvData[this.altColSelect.value][0])) {
       // the value was numeric, t
       this.operation = document.createElement("select")
+      this.operation.id = "op"
       let equals = document.createElement("option")
       equals.innerHTML = "<"
       equals.value = "<"
@@ -425,6 +452,7 @@ class AltColumnFilters {
       // remove existing elements too
       // generate the == != select
       this.operation = document.createElement("select")
+      this.operation.id = "op"
       let equals = document.createElement("option")
       equals.innerHTML = "=="
       equals.value = "=="
@@ -438,6 +466,7 @@ class AltColumnFilters {
       // make a populated selector with unique options from the column
       this.findUniqueElements()
       this.valueSelector = document.createElement("select")
+      this.valueSelector.id = "val"
       for (let op of this.uniqueSet) {
         //make an option with each
         let opele = document.createElement("option")
@@ -519,6 +548,7 @@ class AltHolder {
     this.paneOb = paneOb
     this.createAltRowBtn = document.createElement("button")
     this.createAltRowBtn.innerHTML = "Create Alt Column Filter"
+    this.createAltRowBtn.id = "altfilterbutton"
     this.altfilters = []
   }
   init() {
@@ -584,8 +614,8 @@ class AltHolder {
       if (ele.id == filter.id) {
         // remove it from the list 
         this.altfilters.splice(index, 1)
-        // also remove the entry from the paneob export list
-        this.paneOb.altFiltersState.splice(index, 1)
+        // also remove the entry from the paneob export object
+        delete this.paneOb.altFiltersState[index]
         // trigger remask calculation so as not to confuse whats active
         this.filter()
 
