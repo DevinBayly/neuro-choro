@@ -73,7 +73,7 @@ class Application {
             let rowSelect = row.querySelector("#colname")
             // assign value to the selector from import
             // NOTE requires the correct csv to be loaded already too
-            rowSelect.value =  filterSettings.colname
+            rowSelect.value = filterSettings.colname
             rowSelect.dispatchEvent(new Event("change"))
             // select the correct operations values too
             let op = row.querySelector("#op")
@@ -927,6 +927,17 @@ class Canvas {
     this.yinterp = yinterp
     this.xinterp = xinterp
   }
+  tooltipMaker(regionName, inner) {
+    // make a little side box with the info in it
+    // take away a chunk of the image at that area
+    // remove any improper characters for the id
+    let id = regionName.replace(/[-_]/g, "")
+    let rightDiv = document.createElement("div")
+    rightDiv.id = "tooltip" + id
+    rightDiv.innerHTML = inner        //put new info in front of notes to canvas element if possible
+    this.infoHolder.prepend(rightDiv)
+    // add tooltip to the rois tooltip array
+  }
   // add a tracker for regions clicked
   // populate elements on canvas like roi's which stores the region name, 
   // at draw time if region is in the roi list stroke it in purple, or green? ask josh what he thinks?
@@ -947,20 +958,10 @@ class Canvas {
       let regionName = this.colToRegMap[JSON.stringify(pix)]
       if (this.paneOb.rois[regionName] != undefined) {
         delete this.paneOb.rois[regionName]
-        // remove the generated tooltip
-        let id = regionName.replace(/[-_]/g, "")
-        document.querySelector(`#tooltip${id}`).remove()
       } else {
-        // make a little side box with the info in it
-        // take away a chunk of the image at that area
-        let rightDiv = document.createElement("div")
-        // remove any improper characters for the id
-        let id = regionName.replace(/[-_]/g, "")
-
-        rightDiv.id = "tooltip" + id
-        rightDiv.innerHTML = `
+        this.paneOb.rois[regionName] = `
             <h3>Selected Region
-              <p class="tooltip-child">
+              <p class="tooltip-child" id="regionname">
                     ${ regionName}
               </p>
               <p class="tooltip-child">
@@ -972,10 +973,8 @@ class Canvas {
               </p><p>altfilterinfo:${this.paneOb.altFilterInfo}</p>
             </h3>
             `
-        //put new info in front of notes to canvas element if possible
-        this.infoHolder.prepend(rightDiv)
-        // add tooltip to the rois tooltip array
-        this.paneOb.rois[regionName] = rightDiv.innerHTML
+
+
       }
       // do a redraw
       this.drawCanvas()
@@ -1040,6 +1039,10 @@ class Canvas {
     //TODO find better version of how to structure so that the margin can be programmatically set
     this.ctx.clearRect(0, 0, this.can.width, this.can.height)
     this.invisictx.clearRect(0, 0, this.can.width, this.can.height)
+    // remove previous tooltips
+    while (this.infoHolder.firstChild) {
+      this.infoHolder.removeChild(this.infoHolder.firstChild)
+    }
     let red = {
       r: 255,
       g: 0,
@@ -1080,6 +1083,12 @@ class Canvas {
             this.ctx.strokeStyle = "yellow"
             this.ctx.lineWidth = 5
             this.ctx.stroke()
+          }
+          // add tooltips that are visible
+          let regId = linedata.region.replace(/[-_]/g, "")
+          // if we don't find the element must make the tooltip
+          if (!document.getElementById(`tooltip${regId}`)){
+            this.tooltipMaker(linedata.region, this.paneOb.rois[linedata.region])
           }
         }
 
