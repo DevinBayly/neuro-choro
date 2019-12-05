@@ -1119,9 +1119,9 @@ class Canvas {
             let lerpc
             if (scanData < 0) {
               // use the blue to gray instead of gray to red
-              lerpc = LerpCol(blue, gray, t, 2).calc()
+              lerpc = LerpCol(blue, gray, t, 2)
             } else {
-              lerpc = LerpCol(gray, red, t, 2).calc()
+              lerpc = LerpCol(gray, red, t, 2)
             }
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
