@@ -94,7 +94,7 @@ class Application {
     await this.ctrlop.init()
 
     // create the canvas
-    this.can = new Canvas(newPane.paneDiv, newPane, 500, 30)
+    this.can = new Canvas(newPane.paneDiv, newPane, 500, 80)
     this.can.init()
     // target the canvas with our events
     this.ctrlop.target(this.can.can)
@@ -401,6 +401,7 @@ class AltColumnFilters {
   generateOperations() {
     // check whether the column is numeric
     this.expInfo["name"] = this.altColSelect.value
+    this.paneOb.altFiltersState[this.id].colname = this.altColSelect.value
     if (parseFloat(this.paneOb.csvData[this.altColSelect.value][0])) {
       // the value was numeric, t
       this.operation = document.createElement("select")
@@ -448,12 +449,16 @@ class AltColumnFilters {
       // do mask on both the selectors change
       this.operation.onchange = this.mask.bind(this)
       this.valueSelector.onchange = this.mask.bind(this)
+      // mask using  defaults
+      this.mask()
     }
   }
   // generate a 0 1 vector to determine whether the filter should keep or toss a fillColumn value
   mask() {
     this.expInfo["operation"] = this.operation.value
     this.expInfo["value"] = this.valueSelector.value
+    this.paneOb.altFiltersState[this.id].op = this.operation.value
+    this.paneOb.altFiltersState[this.id].val = this.valueSelector.value
     this.boolMask = this.paneOb.csvData[this.altColSelect.value].map(e => {
       if (this.operation.value == "==") {
         if (e == this.valueSelector.value) {
@@ -524,6 +529,7 @@ class AltHolder {
     this.ctrlDiv.append(this.holder)
     this.idCount = 0
     // attach the altfilters to the paneOb for export
+    this.paneOb.altFiltersState = {}
 
   }
   addRow() {
@@ -531,6 +537,8 @@ class AltHolder {
     newAlt.init()
     newAlt.id = this.idCount
     this.idCount++
+    // add to the pane collection for export as well
+    this.paneOb.altFiltersState[newAlt.id] = { colname: "", op: "", val: "" }
     // add the removal function to take it from the list too
 
     newAlt.removeFromList = this.removeFromList.bind(this)
@@ -576,6 +584,8 @@ class AltHolder {
       if (ele.id == filter.id) {
         // remove it from the list 
         this.altfilters.splice(index, 1)
+        // also remove the entry from the paneob export list
+        this.paneOb.altFiltersState.splice(index, 1)
         // trigger remask calculation so as not to confuse whats active
         this.filter()
 
@@ -873,11 +883,19 @@ class Canvas {
     }
     // create the region data to screen space interpolators
     let xinterp = interpolator()
-    xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width - this.margin)
-    this.xinterp = xinterp
     let yinterp = interpolator()
-    yinterp.setup(this.regionSizes[1], (this.can.height - this.margin) * this.canvasRatio, this.regionSizes[3], this.margin)// extra 10is the margin split intwo
+    // use correct ratio
+    if (this.canvasRatio > 1) {
+      xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width / this.canvasRatio - this.margin)
+      yinterp.setup(this.regionSizes[1], (this.can.height - this.margin), this.regionSizes[3], this.margin)// extra 10is the margin split intwo
+
+    } else {
+
+      xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width - this.margin)
+      yinterp.setup(this.regionSizes[1], this.can.height * this.canvasRatio - this.margin, this.regionSizes[3], this.margin)// extra 10is the margin split intwo
+    }
     this.yinterp = yinterp
+    this.xinterp = xinterp
   }
   // add a tracker for regions clicked
   // populate elements on canvas like roi's which stores the region name, 
