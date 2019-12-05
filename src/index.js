@@ -86,7 +86,7 @@ class Application {
         }
         // import the tooltips that were active on the pane last session 
         if (pane.rois) {
-          for(let roi in pane.rois) {
+          for (let roi in pane.rois) {
             activePane.rois[roi] = pane.rois[roi]
           }
         }
@@ -127,7 +127,7 @@ class Application {
     await this.ctrlop.init()
 
     // create the canvas
-    this.can = new Canvas(newPane.paneDiv, newPane, 500, 80)
+    this.can = new Canvas(newPane.paneDiv, newPane, 500, 20)
     this.can.init()
     // target the canvas with our events
     this.ctrlop.target(this.can.can)
@@ -197,7 +197,7 @@ class CtrlOp {
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
   async loader() {
     // make the form that uploads the data
-    await fetch("./src/HCP-MMP1_List.csv").then(
+    await fetch("./src/HCP_modified.csv").then(
       res => {
         return res.text()
       }
@@ -208,18 +208,19 @@ class CtrlOp {
   csvDataReader(csvRawString) {
     // !! think carefully about the types of errors that might come up here
     // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
-    let lines = csvRawString.split("\r")
+    // NOTE each row must either end with a \r or a \n
+    let lines = csvRawString.replace(/\r|\n/g, "---").split("---")
     let headers = lines[0].split(",")
     this.paneOb.csvData = {}
     headers.map(e => {
-      this.paneOb.csvData[e] = []
+      this.paneOb.csvData[e.toLowerCase()] = []
     })
     // read through the rest of the lines and add them to the data
     // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
     for (let iLine = 1; iLine < lines.length; iLine++) {
       let entries = lines[iLine].split(",")
       for (let i = 0; i < entries.length; i++) {
-        this.paneOb.csvData[headers[i]].push(entries[i])
+        this.paneOb.csvData[headers[i].toLowerCase()].push(entries[i])
       }
     }
   }
@@ -254,9 +255,9 @@ class CtrlOp {
   // this is the part for creating the column selection area
   // deals with the csv data
   createSelector() {
-    // delete previous selection tools
 
     // this is the selection element that is populated by the column names in the csv
+
     let valueColumnSelect = document.createElement("select")
     valueColumnSelect.id = "fillCol"
     for (let key of Object.keys(this.paneOb.csvData)) {
@@ -634,6 +635,10 @@ class AltHolder {
 
 
   }
+  remove(){
+    this.holder.remove()
+    this.createAltRowBtn.remove()
+  }
 
 }
 
@@ -831,11 +836,11 @@ class Canvas {
     this.regNameToValueMap = {}
     // drawregions without fill if nothing selected yet
     if (this.fillData == undefined) {
-      this.paneOb.csvData["regionName"].map((e, i) => {
+      this.paneOb.csvData["region"].map((e, i) => {
         this.regNameToValueMap[e.replace(/\s/, "")] = NaN
       })
     } else {
-      this.paneOb.csvData["regionName"].map((e, i) => {
+      this.paneOb.csvData["region"].map((e, i) => {
         this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
       })
     }
@@ -1057,10 +1062,15 @@ class Canvas {
       g: 0,
       b: 0,
     }
-    let yellow = {
+    let gray = {
       r: 128,
       g: 128,
       b: 128
+    }
+    let blue = {
+      r: 0,
+      g: 0,
+      b: 255
     }
     // iterate over the boundary data
     for (let region of this.paneOb.sliceData.features) {
@@ -1096,7 +1106,7 @@ class Canvas {
           // add tooltips that are visible
           let regId = linedata.region.replace(/[-_]/g, "")
           // if we don't find the element must make the tooltip
-          if (!document.getElementById(`tooltip${regId}`)){
+          if (!document.getElementById(`tooltip${regId}`)) {
             this.tooltipMaker(linedata.region, this.paneOb.rois[linedata.region])
           }
         }
@@ -1106,7 +1116,13 @@ class Canvas {
           if (this.regNameToValueMap[linedata.region]) {
             let scanData = this.regNameToValueMap[linedata.region]
             let t = this.valToColInterp.calc(scanData)
-            let lerpc = LerpCol(yellow, red, t, 2)
+            let lerpc
+            if (scanData < 0) {
+              // use the blue to gray instead of gray to red
+              lerpc = LerpCol(blue, gray, t, 2).calc()
+            } else {
+              lerpc = LerpCol(gray, red, t, 2).calc()
+            }
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
             // query the region to color map
