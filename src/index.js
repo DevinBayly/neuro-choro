@@ -90,7 +90,9 @@ class Application {
             activePane.rois[roi] = pane.rois[roi]
           }
         }
-
+        if (pane.ta) {
+          activePane.ta.value = pane.ta
+        }
       }
     })
   }
@@ -102,6 +104,7 @@ class Application {
       // collect the relevant information
       // omit the boundary file
       let { regionBoundaryData, ...rest } = pane
+      rest.ta = pane.ta.value
       expOb.panes.push(rest)
     }
     let a = document.createElement("a")
@@ -840,7 +843,7 @@ class Canvas {
   init() {
     // setup the canvas
     this.canvasHolder.append(this.can)
-    this.infoHolder.append(this.paneOb.ta)
+    this.canvasHolder.append(this.paneOb.ta)
     this.canvasHolder.append(this.infoHolder)
     this.paneDiv.append(this.canvasHolder)
     this.can.height = this.size
