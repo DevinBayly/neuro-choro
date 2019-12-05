@@ -84,6 +84,12 @@ class Application {
             val.dispatchEvent(new Event("change"))
           }
         }
+        // import the tooltips that were active on the pane last session 
+        if (pane.rois) {
+          for(let roi in pane.rois) {
+            activePane.rois[roi] = pane.rois[roi]
+          }
+        }
 
       }
     })
