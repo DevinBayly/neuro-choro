@@ -121,6 +121,7 @@ class Application {
     let newPane = new Pane(this.applicationHolder,this.panes.length)
     // pass reference to pane, to be used by ctrlOp and Canvas
     newPane.regionBoundaryData = this.regionBoundaryData
+    newPane.csvText = this.csvText
     // here's the point where we can connect up the various parts
     // finish pane loading
 
@@ -185,8 +186,8 @@ class CtrlOp {
     this.paneOb.brainView = "sagittal" // default
     this.paneOb.paneDiv.querySelector("#radiosagittal").checked = true
 
-    // instantiate loader
-    await this.loader()
+    //parse the csv data
+    this.csvDataReader()
 
     // create the, column selectors, sliders, and the filters
     this.createSelector()
@@ -201,16 +202,11 @@ class CtrlOp {
 
 
   }
-  // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
-  async loader() {
-    // make the form that uploads the data
-    this.csvDataReader(this.csvText)
-  }
-  csvDataReader(csvRawString) {
+  csvDataReader() {
     // !! think carefully about the types of errors that might come up here
     // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
     // NOTE each row must either end with a \r or a \n
-    let lines = csvRawString.replace(/\r|\n/g, "---").split("---")
+    let lines = this.paneOb.csvText.replace(/\r|\n/g, "---").split("---")
     let headers = lines[0].split(",")
     this.paneOb.csvData = {}
     headers.map(e => {
