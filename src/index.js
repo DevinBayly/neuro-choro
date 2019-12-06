@@ -192,6 +192,9 @@ class CtrlOp {
     // create the brain slice slider
     this.createSlider()
 
+    // ensure that the slider only permits sagittal slice count
+    this.paneOb.paneDiv.querySelector("#radiosagittal").click()
+
     // create the activity and category filters
 
 
@@ -986,7 +989,7 @@ class Canvas {
                     ${ regionName}
               </p>
               <p class="tooltip-child">
-            <p>value: ${this.regNameToValueMap[regionName]}
+            <p>value: ${this.regNameToValueMap[regionName].toFixed(5)}
             </p><p>view: ${this.paneOb.brainView}
             </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
             </p><p>slice: ${this.paneOb.sliceMeasure}
