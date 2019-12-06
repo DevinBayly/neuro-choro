@@ -108,7 +108,9 @@ class Application {
       expOb.panes.push(rest)
     }
     let a = document.createElement("a")
-    a.download = "test.json"     // create a fake a tag with the download property linked to a blob containing the kson, and then click it
+    let today = new Date()
+    let datename = `neuro_choropleth_session_${today.getFullYear()}_${today.getMonth()}_${today.getDate()}_${today.getHours()}_${today.getSeconds()}.json`
+    a.download = datename    // note that the date elements start with 0 so december is going to be tthe 11th month, and jan is the 0th
     a.href = URL.createObjectURL(new Blob([JSON.stringify(expOb)]))
     a.click()
 
@@ -635,7 +637,7 @@ class AltHolder {
 
 
   }
-  remove(){
+  remove() {
     this.holder.remove()
     this.createAltRowBtn.remove()
   }
@@ -664,9 +666,14 @@ class FillColFilter {
     let min = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
     let max = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
 
+
     // establish the absmin and absmax of the column data
     // raise hell if the data can't be sorted this way
     this.setbounds(Math.min(...this.data), Math.max(...this.data))
+    // makes it easier to have the sliders present correct values even when negatives are involved
+    this.interpolator = interpolator()
+    // values of v go in which range from 0 to 1
+    this.interpolator.setup(0, this.absmin, 1, this.absmax)
 
     this.maxel = max
     this.minel = min
@@ -692,12 +699,12 @@ class FillColFilter {
         min.element.style.left = `${maxleft}px`
         this.min = maxleft
         // update min label
-        this.minlabel.innerHTML = (maxleft * this.absmax / (this.width)).toFixed(5)
+        this.minlabel.innerHTML = this.interpolator.calc(maxleft  / this.width).toFixed(5)
         return true
       }
       this.min = v
       // update min label and account for the divslider width
-      this.minlabel.innerHTML = (v * this.absmax / (this.width)).toFixed(5)
+      this.minlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
       return false
     }
     max.additionalLimit = (v) => {
@@ -705,10 +712,10 @@ class FillColFilter {
       if (v < minleft) {
         max.element.style.left = `${minleft}px`
         this.max = minleft
-        this.maxlabel.innerHTML = (minleft * this.absmax / (this.width)).toFixed(5)
+        this.maxlabel.innerHTML = this.interpolator.calc(minleft  / this.width).toFixed(5)
         return true
       }
-      this.maxlabel.innerHTML = (v * this.absmax / (this.width)).toFixed(5)
+      this.maxlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
       this.max = v
       return false
     }
@@ -732,8 +739,8 @@ class FillColFilter {
   }
   filter() {
     // calculate the actual min activity value
-    let activitymin = this.absmax * this.min / this.width
-    let activitymax = this.absmax * this.max / this.width
+    let activitymin = this.interpolator.calc(this.min / this.width).toFixed(5)
+    let activitymax = this.interpolator.calc(this.max / this.width).toFixed(5)
     // give this information to the paneOb,useful for tooltips
     this.paneOb.valFilterMin = activitymin
     this.paneOb.valFilterMax = activitymax
