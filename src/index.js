@@ -8,7 +8,7 @@ class Application {
   // changed?
   async addButton() {
     // fetch the region boundary data
-    await fetch("src/GeoJson_HCP-MMP1/total_small_parsed.json").then(res => res.json()).then(j => {
+    await fetch("src/GeoJson_Brains/totalfix.json").then(res => res.json()).then(j => {
       // assign result to the pane Parent
       // this almost needs to be tied to the application instead
       this.regionBoundaryData = j
@@ -202,7 +202,7 @@ class CtrlOp {
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
   async loader() {
     // make the form that uploads the data
-    await fetch("./src/HCP_modified.csv").then(
+    await fetch("./src/HO-CB_run-01_IC-06_Russian_Unlearnable_1.5.csv").then(
       res => {
         return res.text()
       }
@@ -324,9 +324,11 @@ class CtrlOp {
       return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
     })
     this.sliderMeasurements.sagittal = slicesByView.sagittal.map(sl => {
+      console.log(sl)
       return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
     })
     this.sliderMeasurements.coronal = slicesByView.coronal.map(sl => {
+      console.log(sl)
       return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
     })
   }
