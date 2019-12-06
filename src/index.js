@@ -767,6 +767,7 @@ class divMaker {
     d.style.height = "30px"
     d.style.width = "30px"
     d.style.position = "relative"
+    d.style.margin = "0"
     let move = (e) => {
       let x = e.clientX - holder.getBoundingClientRect().left
       let left = x
@@ -950,6 +951,7 @@ class Canvas {
     let id = regionName.replace(/[-_]/g, "")
     let rightDiv = document.createElement("div")
     rightDiv.id = "tooltip" + id
+    rightDiv.className = "tooltipholder"
     rightDiv.innerHTML = inner        //put new info in front of notes to canvas element if possible
     this.infoHolder.prepend(rightDiv)
     // add tooltip to the rois tooltip array
