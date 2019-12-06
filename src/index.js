@@ -118,7 +118,7 @@ class Application {
 
   }
   async addPane() {
-    let newPane = new Pane(this.panes.length)
+    let newPane = new Pane(this.applicationHolder,this.panes.length)
     // pass reference to pane, to be used by ctrlOp and Canvas
     newPane.regionBoundaryData = this.regionBoundaryData
     // here's the point where we can connect up the various parts
@@ -142,14 +142,15 @@ class Application {
 class Pane {
   // initiates construction of the ctrl op object for the pane all the buttons and stuff that have control over the canvas
   // initiates creation of the canvas
-  constructor(count) {
+  constructor(applicationHolder,count) {
     // generate the pane div
     // want radio w 3 buttons, range slider, selection form for loading
     let paneDiv = document.createElement("div")
     paneDiv.className = "pane"
     paneDiv.setAttribute("id", "pane" + count)
     this.paneDiv = paneDiv
-    this.paneOb.applicationHolder.append(this.paneDiv)
+    this.applicationHolder = applicationHolder
+    this.applicationHolder.append(this.paneDiv)
     // create the ctrlop and canvas
   }
 }
