@@ -114,6 +114,8 @@ class Application {
     a.download = datename    // note that the date elements start with 0 so december is going to be tthe 11th month, and jan is the 0th
     a.href = URL.createObjectURL(new Blob([JSON.stringify(expOb)]))
     a.click()
+    // also allow to save in this notebook
+    iodide.file.save(datename, 'json', expOb, { overwrite: true });
 
 
   }
