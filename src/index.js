@@ -149,7 +149,7 @@ class Pane {
     paneDiv.className = "pane"
     paneDiv.setAttribute("id", "pane" + count)
     this.paneDiv = paneDiv
-    this.applicationHolder.append(this.paneDiv)
+    this.paneOb.applicationHolder.append(this.paneDiv)
     // create the ctrlop and canvas
   }
 }
