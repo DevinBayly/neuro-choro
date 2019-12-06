@@ -1203,8 +1203,3 @@ let LerpCol = (c1, c2, t, jitter) => {
   return `rgb(${red},${green},${blue})`
 
 }
-
-window.onload = async () => {
-  let app = new Application()
-  await app.addButton()
-}
