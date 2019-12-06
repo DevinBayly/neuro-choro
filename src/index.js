@@ -9,6 +9,9 @@ class Application {
     this.importData = importData
     this.csvText = csvText
   }
+  runApp() {
+    this.addButton()
+  }
   // changed?
   async addButton() {
     // fetch the region boundary data
