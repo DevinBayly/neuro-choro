@@ -1,18 +1,17 @@
 class Application {
   // starts off with the add pane button
   // holds all panes?
-  constructor() {
+  constructor(jsonData = {}, csvText = "", importData = {}) {
+
     // create the button
     this.panes = []
+    this.regionBoundaryData = jsonData
+    this.importData = importData
+    this.csvText = csvText
   }
   // changed?
   async addButton() {
     // fetch the region boundary data
-    await fetch("src/GeoJson_Brains/totalfix.json").then(res => res.json()).then(j => {
-      // assign result to the pane Parent
-      // this almost needs to be tied to the application instead
-      this.regionBoundaryData = j
-    })
     this.btndiv = document.createElement("div")
     this.btndiv.id = "btnholder"
     this.btn = document.createElement("button")
@@ -33,68 +32,66 @@ class Application {
     document.body.append(this.importBtn)
   }
   async import() {
-    fetch("./test.json").then(res => res.json()).then(async e => {
-      // iterate over the panes
-      for (let pane of e.panes) {
-        console.log(pane)
-        await this.addPane()
-        // select correct options
-        let activePane = this.panes[this.panes.length - 1]
-        // set the fillCol to the previous 
-        let fillSelector = activePane.paneDiv.querySelector("#fillCol")
-        fillSelector.value = pane.fillColValue
-        // emit change event to trigger drawing
-        fillSelector.dispatchEvent(new Event("change"))
+    // iterate over the panes
+    for (let pane of this.importData.panes) {
+      console.log(pane)
+      await this.addPane()
+      // select correct options
+      let activePane = this.panes[this.panes.length - 1]
+      // set the fillCol to the previous 
+      let fillSelector = activePane.paneDiv.querySelector("#fillCol")
+      fillSelector.value = pane.fillColValue
+      // emit change event to trigger drawing
+      fillSelector.dispatchEvent(new Event("change"))
 
-        // set the view correctly,
-        activePane.brainView = pane.brainView
-        let radio = activePane.paneDiv.querySelector(`#radio${pane.brainView}`)
-        radio.checked = true
-        // set the slice of the view 
-        let slider = activePane.paneDiv.querySelector("#rangeslider")
-        slider.value = pane.sliderIndex
-        // dispatch the event that draws the canvas for the slider change
-        slider.dispatchEvent(new Event("input"))
-        // add info to the fillFilter boxes
-        // but not all sessions will use it so check first
-        if (pane.valFilterMax) {
-          activePane.updateFillFilter(pane.valFilterMin, pane.valFilterMax)
-        }
-        if (pane.altFiltersState) {
-          // iterate over the altfilters used
-          let btn = document.querySelector("#altfilterbutton")
-          for (let key in pane.altFiltersState) {
-            let filterSettings = pane.altFiltersState[key]
-            // click to generate a filter row
-            btn.click()
-            // query to find colVal selector
-            // take the last which will be the most recent addition
-            let row = Array(...document.querySelectorAll(".altFilterRow")).pop()
-            let rowSelect = row.querySelector("#colname")
-            // assign value to the selector from import
-            // NOTE requires the correct csv to be loaded already too
-            rowSelect.value = filterSettings.colname
-            rowSelect.dispatchEvent(new Event("change"))
-            // select the correct operations values too
-            let op = row.querySelector("#op")
-            op.value = filterSettings.op
-            let val = row.querySelector("#val")
-            val.value = filterSettings.val
-            // emit a changed to trigger masking
-            val.dispatchEvent(new Event("change"))
-          }
-        }
-        // import the tooltips that were active on the pane last session 
-        if (pane.rois) {
-          for (let roi in pane.rois) {
-            activePane.rois[roi] = pane.rois[roi]
-          }
-        }
-        if (pane.ta) {
-          activePane.ta.value = pane.ta
+      // set the view correctly,
+      activePane.brainView = pane.brainView
+      let radio = activePane.paneDiv.querySelector(`#radio${pane.brainView}`)
+      radio.checked = true
+      // set the slice of the view 
+      let slider = activePane.paneDiv.querySelector("#rangeslider")
+      slider.value = pane.sliderIndex
+      // dispatch the event that draws the canvas for the slider change
+      slider.dispatchEvent(new Event("input"))
+      // add info to the fillFilter boxes
+      // but not all sessions will use it so check first
+      if (pane.valFilterMax) {
+        activePane.updateFillFilter(pane.valFilterMin, pane.valFilterMax)
+      }
+      if (pane.altFiltersState) {
+        // iterate over the altfilters used
+        let btn = document.querySelector("#altfilterbutton")
+        for (let key in pane.altFiltersState) {
+          let filterSettings = pane.altFiltersState[key]
+          // click to generate a filter row
+          btn.click()
+          // query to find colVal selector
+          // take the last which will be the most recent addition
+          let row = Array(...document.querySelectorAll(".altFilterRow")).pop()
+          let rowSelect = row.querySelector("#colname")
+          // assign value to the selector from import
+          // NOTE requires the correct csv to be loaded already too
+          rowSelect.value = filterSettings.colname
+          rowSelect.dispatchEvent(new Event("change"))
+          // select the correct operations values too
+          let op = row.querySelector("#op")
+          op.value = filterSettings.op
+          let val = row.querySelector("#val")
+          val.value = filterSettings.val
+          // emit a changed to trigger masking
+          val.dispatchEvent(new Event("change"))
         }
       }
-    })
+      // import the tooltips that were active on the pane last session 
+      if (pane.rois) {
+        for (let roi in pane.rois) {
+          activePane.rois[roi] = pane.rois[roi]
+        }
+      }
+      if (pane.ta) {
+        activePane.ta.value = pane.ta
+      }
+    }
   }
   export() {
     // create the export ob
@@ -202,13 +199,7 @@ class CtrlOp {
   // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
   async loader() {
     // make the form that uploads the data
-    await fetch("./src/HO-CB_run-01_IC-06_Russian_Unlearnable_1.5.csv").then(
-      res => {
-        return res.text()
-      }
-    ).then(text => {
-      this.csvDataReader(text)
-    })
+    this.csvDataReader(this.csvText)
   }
   csvDataReader(csvRawString) {
     // !! think carefully about the types of errors that might come up here
@@ -702,7 +693,7 @@ class FillColFilter {
         min.element.style.left = `${maxleft}px`
         this.min = maxleft
         // update min label
-        this.minlabel.innerHTML = this.interpolator.calc(maxleft  / this.width).toFixed(5)
+        this.minlabel.innerHTML = this.interpolator.calc(maxleft / this.width).toFixed(5)
         return true
       }
       this.min = v
@@ -715,7 +706,7 @@ class FillColFilter {
       if (v < minleft) {
         max.element.style.left = `${minleft}px`
         this.max = minleft
-        this.maxlabel.innerHTML = this.interpolator.calc(minleft  / this.width).toFixed(5)
+        this.maxlabel.innerHTML = this.interpolator.calc(minleft / this.width).toFixed(5)
         return true
       }
       this.maxlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
