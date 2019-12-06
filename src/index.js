@@ -1,13 +1,14 @@
 class Application {
   // starts off with the add pane button
   // holds all panes?
-  constructor(jsonData = {}, csvText = "", importData = {}) {
+  constructor(applicationHolder,jsonData = {}, csvText = "", importData = {}) {
 
     // create the button
     this.panes = []
     this.regionBoundaryData = jsonData
     this.importData = importData
     this.csvText = csvText
+    this.applicationHolder = applicationHolder
   }
   runApp() {
     this.addButton()
@@ -22,17 +23,17 @@ class Application {
     this.btn.setAttribute("id", "addbtn")
     this.btn.innerHTML = "Add Pane"
     this.btndiv.append(this.btn)
-    document.body.append(this.btndiv)
+    this.applicationHolder.append(this.btndiv)
     // create the export button also 
     this.exportBtn = document.createElement("button")
     this.exportBtn.innerHTML = "Export"
     this.exportBtn.addEventListener("click", this.export.bind(this))
-    document.body.append(this.exportBtn)
+    this.applicationHolder.append(this.exportBtn)
     // create the import button
     this.importBtn = document.createElement("button")
     this.importBtn.innerHTML = "Import"
     this.importBtn.addEventListener("click", this.import.bind(this))
-    document.body.append(this.importBtn)
+    this.applicationHolder.append(this.importBtn)
   }
   async import() {
     // iterate over the panes
@@ -148,7 +149,7 @@ class Pane {
     paneDiv.className = "pane"
     paneDiv.setAttribute("id", "pane" + count)
     this.paneDiv = paneDiv
-    document.body.append(this.paneDiv)
+    this.applicationHolder.append(this.paneDiv)
     // create the ctrlop and canvas
   }
 }
