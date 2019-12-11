@@ -52,7 +52,6 @@ class Application {
    * @class Application
    */
   constructor(applicationHolder, jsonData = {}) {
-      debugger
     // create the button
     /**  */
     this.panes = []
@@ -81,6 +80,7 @@ class Application {
    */
   runApp() {
     this.addButton()
+    this.btn.click()
   }
   /**
    *Generates a button within the application holder for creating panes, exporting the session, and importing
@@ -102,13 +102,13 @@ class Application {
     // create the export button also 
     /**  */
     this.exportBtn = document.createElement("button")
-    this.exportBtn.innerHTML = "Export"
+    this.exportBtn.innerHTML = "Export Session"
     this.exportBtn.addEventListener("click", this.export.bind(this))
     this.applicationHolder.append(this.exportBtn)
     // create the import button
     /**  */
     this.importBtn = document.createElement("button")
-    this.importBtn.innerHTML = "Import"
+    this.importBtn.innerHTML = "Import Session"
     this.importBtn.addEventListener("click", this.import.bind(this))
     this.applicationHolder.append(this.importBtn)
   }
@@ -146,7 +146,6 @@ class Application {
       // set the csvData from the pane to the paneObcsvText
       activePane.csvText = pane.csvText
       // find way to make it to createSelector
-      debugger
       this.ctrlop.csvDataReader()
       this.ctrlop.createSelector()
       // set the fillCol to the previous 
@@ -237,7 +236,11 @@ class Application {
    * @memberof Application
    */
   async addPane() {
-    let newPane = new Pane(this.applicationHolder, this.panes.length)
+    // create a panes holder to allow for flex only on panes
+    let panesHolder = document.createElement("div")
+    panesHolder.id = "allpanes"
+    this.applicationHolder.append(panesHolder)
+    let newPane = new Pane(panesHolder, this.panes.length)
     // pass reference to pane, to be used by ctrlOp and Canvas
     newPane.regionBoundaryData = this.regionBoundaryData
     // set the application removal function accessible in the newPane
@@ -259,6 +262,9 @@ class Application {
     // target the canvas with our events
     this.ctrlop.target(this.can.can)
 
+    // force draw the first slider value in frame
+    this.ctrlop.slider.dispatchEvent(new Event("input"))
+
     this.panes.push(newPane)
   }
 }
@@ -266,11 +272,11 @@ class Application {
 class Pane {
   /**
    *Creates an instance of Pane. Initiates construction of the ctrl op object for the pane all the buttons and stuff that have control over the canvas. Initiates creation of the canvas
-   * @param {*} applicationHolder This is the element that the pane will live within. Used in Iodide Notebook
+   * @param {*} panesHolder This is the element that the pane will live within. Used in Iodide Notebook
    * @param {*} count This is the ID of the pane, helps track how many have been created.
    * @class Pane
    */
-  constructor(applicationHolder, count) {
+  constructor(panesHolder, count) {
     // generate the pane div
     // want radio w 3 buttons, range slider, selection form for loading
     let paneDiv = document.createElement("div")
@@ -286,8 +292,8 @@ class Pane {
     this.removeIcon.addEventListener("click",this.removePane.bind(this))
     this.paneDiv.append(this.removeIcon)
     /**  */
-    this.applicationHolder = applicationHolder
-    this.applicationHolder.append(this.paneDiv)
+    this.panesHolder = panesHolder
+    this.panesHolder.append(this.paneDiv)
   }
 
   loadRequestHandler(cb) {
@@ -376,8 +382,10 @@ class CtrlOp {
     // create the brain slice slider
     this.createSlider()
 
+    // set defaults
     // ensure that the slider only permits sagittal slice count
     this.paneOb.paneDiv.querySelector("#radiosagittal").click()
+
   }
   /**
    *This function creates a button that allows loading of a CSV data file. It also adds the result to the paneOb.
@@ -470,6 +478,8 @@ class CtrlOp {
     }
     // this is the selection element that is populated by the column names in the csv
 
+    let fillColDiv = document.createElement("div")
+    fillColDiv.id = "fillcoldiv"
     let valueColumnSelect = document.createElement("select")
     valueColumnSelect.id = "fillCol"
     for (let key of Object.keys(this.paneOb.csvData)) {
@@ -478,7 +488,8 @@ class CtrlOp {
       option.innerHTML = key
       valueColumnSelect.append(option)
     }
-    this.ctrlDiv.append(valueColumnSelect)
+    fillColDiv.append(valueColumnSelect)
+    this.ctrlDiv.append(fillColDiv)
     valueColumnSelect.onchange = () => {
       // make access to the selector possible
       this.paneOb.fillColValue = valueColumnSelect.value
@@ -550,6 +561,9 @@ class CtrlOp {
    * @memberof CtrlOp
    */
   createSlider() {
+    // make a slider div
+    let sliderDiv = document.createElement("div")
+    sliderDiv.id = "sliderdiv"
     //initiate the slider
     let range = document.createElement("input")
     range.id = "rangeslider"
@@ -558,14 +572,18 @@ class CtrlOp {
     range.name = "slicerange"
     range.type = "range"
     label.setAttribute("for", "slicerange")
-    this.ctrlDiv.append(range)
-    this.ctrlDiv.append(label)
+    sliderDiv.append(range)
+    sliderDiv.append(label)
+    this.ctrlDiv.append(sliderDiv)
     /**  */
     this.slider = range
     /**  */
     this.sliderlabel = label
     // makes several attributes helpful for handling slider change
     this.prepRangeData()
+    // draw a default slice
+    this.slider.value = Math.round(this.sliderSlices.sagittal.length/2)
+
     // add the on input event emitter  for when slider moves
     this.slider.oninput = () => {
       /**  */
@@ -645,8 +663,9 @@ class AltColumnFilters {
     this.outerHolder.append(this.holder)
     // create element that takes away the filter row
     /**  */
-    this.removeBtn = document.createElement("button")
-    this.removeBtn.innerHTML = "X"
+    this.removeBtn = new Image()
+    this.removeBtn.src = "https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/x.png"
+
     this.removeBtn.addEventListener("click", this.removeSelf.bind(this))
     this.holder.append(this.removeBtn)
     // make the first select element of the csv columns
