@@ -657,6 +657,8 @@ class AltColumnFilters {
     }
     this.holder.append(this.altColSelect)
     // on change, replace the other elements with new operation and selector
+    // run it once to set options for default selection
+    this.generateOperations()
     this.altColSelect.onchange = this.generateOperations.bind(this)
 
   }
@@ -666,6 +668,13 @@ class AltColumnFilters {
    * @memberof AltColumnFilters
    */
   generateOperations() {
+    // remove previous elements if created
+    if (this.operation) {
+      this.operation.remove()
+    }
+    if (this.valueSelector) {
+      this.valueSelector.remove()
+    }
     // check whether the column is numeric
     this.expInfo["name"] = this.altColSelect.value
     this.paneOb.altFiltersState[this.id].colname = this.altColSelect.value
@@ -848,11 +857,11 @@ class AltHolder {
    */
   addRow() {
     let newAlt = new AltColumnFilters(this.holder, this.paneOb)
-    newAlt.init()
     newAlt.id = this.idCount
     this.idCount++
     // add to the pane collection for export as well
     this.paneOb.altFiltersState[newAlt.id] = { colname: "", op: "", val: "" }
+    newAlt.init()
     // add the removal function to take it from the list too
 
     newAlt.removeFromList = this.removeFromList.bind(this)
