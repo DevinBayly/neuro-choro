@@ -6,6 +6,7 @@ This is a tool to efficiently perform initial analyses of neuro imaging multi su
 json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/GeoJson_Brains/totalfix.json
 
 
+
 %% md
 <div id="applicationHolder"></div>
 %% css
@@ -59,6 +60,19 @@ class Application {
     this.regionBoundaryData = jsonData
     /**  */
     this.applicationHolder = applicationHolder
+  }
+  /**
+   * This function is the application side of pane removal, there's another function used in the pane class, but this will ensure that the correct pane is taken out of the pane list 
+   * @param {*} id this is the tagid of the pane that should get removed
+   */
+  removePane(id) {
+    for (let ind = 0;ind < this.panes.length;ind++) {
+      let pane = this.panes[ind]
+      if (pane.paneDiv.id == id) {
+        // splice out the specific pane
+        this.panes.splice(ind,1)
+      }
+    }
   }
   /**
    *Calls the add button option to create panes for your exploratory investigation of the fMRI data
@@ -226,6 +240,9 @@ class Application {
     let newPane = new Pane(this.applicationHolder, this.panes.length)
     // pass reference to pane, to be used by ctrlOp and Canvas
     newPane.regionBoundaryData = this.regionBoundaryData
+    // set the application removal function accessible in the newPane
+    newPane.removeFromApplication = this.removePane.bind(this)
+
     // here's the point where we can connect up the various parts
     // finish pane loading
 
@@ -261,6 +278,13 @@ class Pane {
     paneDiv.setAttribute("id", "pane" + count)
     /**  */
     this.paneDiv = paneDiv
+    /** */
+    this.removeIcon = new Image()
+    // xicon is a global created at the top of the notebook
+    this.removeIcon.src = "https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/x.png"
+    this.removeIcon.id = "paneremoveicon"
+    this.removeIcon.addEventListener("click",this.removePane.bind(this))
+    this.paneDiv.append(this.removeIcon)
     /**  */
     this.applicationHolder = applicationHolder
     this.applicationHolder.append(this.paneDiv)
@@ -287,6 +311,12 @@ class Pane {
       // trigger the opening of a file explorer window
       inputFile.click()
     }
+  }
+  removePane() {
+    //call the application remover that was set on the class instance
+    this.removeFromApplication(this.paneDiv.id)
+    //actually remove paneDiv
+    this.paneDiv.remove()
   }
 }
 
