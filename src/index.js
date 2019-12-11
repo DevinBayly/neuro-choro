@@ -1,50 +1,1213 @@
+class Application {
+  // starts off with the add pane button
+  // holds all panes?
+  constructor() {
+    // create the button
+    this.panes = []
+  }
+  // changed?
+  async addButton() {
+    // fetch the region boundary data
+    await fetch("src/GeoJson_Brains/totalfix.json").then(res => res.json()).then(j => {
+      // assign result to the pane Parent
+      // this almost needs to be tied to the application instead
+      this.regionBoundaryData = j
+    })
+    this.btndiv = document.createElement("div")
+    this.btndiv.id = "btnholder"
+    this.btn = document.createElement("button")
+    this.btn.onclick = this.addPane.bind(this)
+    this.btn.setAttribute("id", "addbtn")
+    this.btn.innerHTML = "Add Pane"
+    this.btndiv.append(this.btn)
+    document.body.append(this.btndiv)
+    // create the export button also 
+    this.exportBtn = document.createElement("button")
+    this.exportBtn.innerHTML = "Export"
+    this.exportBtn.addEventListener("click", this.export.bind(this))
+    document.body.append(this.exportBtn)
+    // create the import button
+    this.importBtn = document.createElement("button")
+    this.importBtn.innerHTML = "Import"
+    this.importBtn.addEventListener("click", this.import.bind(this))
+    document.body.append(this.importBtn)
+  }
+  async import() {
+    fetch("./test.json").then(res => res.json()).then(async e => {
+      // iterate over the panes
+      for (let pane of e.panes) {
+        console.log(pane)
+        await this.addPane()
+        // select correct options
+        let activePane = this.panes[this.panes.length - 1]
+        // set the fillCol to the previous 
+        let fillSelector = activePane.paneDiv.querySelector("#fillCol")
+        fillSelector.value = pane.fillColValue
+        // emit change event to trigger drawing
+        fillSelector.dispatchEvent(new Event("change"))
 
-let brain
-let globalinfo
-let csvData = {}// organized by pane count ids
-let csvRegionArray
-let regionMap = {}  
+        // set the view correctly,
+        activePane.brainView = pane.brainView
+        let radio = activePane.paneDiv.querySelector(`#radio${pane.brainView}`)
+        radio.checked = true
+        // set the slice of the view 
+        let slider = activePane.paneDiv.querySelector("#rangeslider")
+        slider.value = pane.sliderIndex
+        // dispatch the event that draws the canvas for the slider change
+        slider.dispatchEvent(new Event("input"))
+        // add info to the fillFilter boxes
+        // but not all sessions will use it so check first
+        if (pane.valFilterMax) {
+          activePane.updateFillFilter(pane.valFilterMin, pane.valFilterMax)
+        }
+        if (pane.altFiltersState) {
+          // iterate over the altfilters used
+          let btn = document.querySelector("#altfilterbutton")
+          for (let key in pane.altFiltersState) {
+            let filterSettings = pane.altFiltersState[key]
+            // click to generate a filter row
+            btn.click()
+            // query to find colVal selector
+            // take the last which will be the most recent addition
+            let row = Array(...document.querySelectorAll(".altFilterRow")).pop()
+            let rowSelect = row.querySelector("#colname")
+            // assign value to the selector from import
+            // NOTE requires the correct csv to be loaded already too
+            rowSelect.value = filterSettings.colname
+            rowSelect.dispatchEvent(new Event("change"))
+            // select the correct operations values too
+            let op = row.querySelector("#op")
+            op.value = filterSettings.op
+            let val = row.querySelector("#val")
+            val.value = filterSettings.val
+            // emit a changed to trigger masking
+            val.dispatchEvent(new Event("change"))
+          }
+        }
+        // import the tooltips that were active on the pane last session 
+        if (pane.rois) {
+          for (let roi in pane.rois) {
+            activePane.rois[roi] = pane.rois[roi]
+          }
+        }
+        if (pane.ta) {
+          activePane.ta.value = pane.ta
+        }
+      }
+    })
+  }
+  export() {
+    // create the export ob
+    let expOb = { panes: [] }
+    // iterate over the panes
+    for (let pane of this.panes) {
+      // collect the relevant information
+      // omit the boundary file
+      let { regionBoundaryData, ...rest } = pane
+      rest.ta = pane.ta.value
+      expOb.panes.push(rest)
+    }
+    let a = document.createElement("a")
+    let today = new Date()
+    let datename = `neuro_choropleth_session_${today.getFullYear()}_${today.getMonth()}_${today.getDate()}_${today.getHours()}_${today.getSeconds()}.json`
+    a.download = datename    // note that the date elements start with 0 so december is going to be tthe 11th month, and jan is the 0th
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(expOb)]))
+    a.click()
 
 
-let pointValues ={}// this is region data that ideally has no gaps between points to make the cursor detection more reliable
+  }
+  async addPane() {
+    let newPane = new Pane(this.panes.length)
+    // pass reference to pane, to be used by ctrlOp and Canvas
+    newPane.regionBoundaryData = this.regionBoundaryData
+    // here's the point where we can connect up the various parts
+    // finish pane loading
+
+    // create ctrloptions
+    this.ctrlop = new CtrlOp(newPane.paneDiv, newPane)
+    // loads the data and such
+    await this.ctrlop.init()
+
+    // create the canvas
+    this.can = new Canvas(newPane.paneDiv, newPane, 500, 20)
+    this.can.init()
+    // target the canvas with our events
+    this.ctrlop.target(this.can.can)
+
+    this.panes.push(newPane)
+  }
+}
+
+class Pane {
+  // initiates construction of the ctrl op object for the pane all the buttons and stuff that have control over the canvas
+  // initiates creation of the canvas
+  constructor(count) {
+    // generate the pane div
+    // want radio w 3 buttons, range slider, selection form for loading
+    let paneDiv = document.createElement("div")
+    paneDiv.className = "pane"
+    paneDiv.setAttribute("id", "pane" + count)
+    this.paneDiv = paneDiv
+    document.body.append(this.paneDiv)
+    // create the ctrlop and canvas
+  }
+}
+
+class CtrlOp {
+  // file loading, val columns, filters, view radio buttons, and slice sliders
+  // meaningful aspects of ctrlOp state
+  //  sliderIndex, sliceName brainView, sliceData, (brain region data)
+  //  initialColData, filteredColData,colName, csvData (region fill data)
+
+  constructor(paneDiv, paneOb) {
+    this.paneOb = paneOb
+    let ctrlDiv = document.createElement("div")
+    ctrlDiv.className = "ctrlDiv"
+    // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
+    paneDiv.append(ctrlDiv)
+    this.paneDiv = paneDiv
+    this.ctrlDiv = ctrlDiv
+    this.eTarget = undefined
+  }
+  target(ele) {
+    this.eTarget = ele
+  }
+  // these functions will get called in the event listeners and allow the canvas to have the correct data 
+  // this is called in the button click scope, where I believe we are permitted to perform an await before making the canvas
+  async init() {
+    // setup the radio buttons
+    this.mkradio("axial")
+    this.mkradio("sagittal")
+    this.mkradio("coronal")
+    // selected is the radio button we have selected
+    this.paneOb.brainView = "sagittal" // default
+    this.paneOb.paneDiv.querySelector("#radiosagittal").checked = true
+
+    // instantiate loader
+    await this.loader()
+
+    // create the, column selectors, sliders, and the filters
+    this.createSelector()
+
+    // create the brain slice slider
+    this.createSlider()
+
+    // ensure that the slider only permits sagittal slice count
+    this.paneOb.paneDiv.querySelector("#radiosagittal").click()
+
+    // create the activity and category filters
+
+
+  }
+  // in preparation for iodide version no more fetching in this way is necessary, just look for data at a specific spot on local host and then we will change it later on
+  async loader() {
+    // make the form that uploads the data
+    await fetch("./src/HO-CB_run-01_IC-06_Russian_Unlearnable_1.5.csv").then(
+      res => {
+        return res.text()
+      }
+    ).then(text => {
+      this.csvDataReader(text)
+    })
+  }
+  csvDataReader(csvRawString) {
+    // !! think carefully about the types of errors that might come up here
+    // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
+    // NOTE each row must either end with a \r or a \n
+    let lines = csvRawString.replace(/\r|\n/g, "---").split("---")
+    let headers = lines[0].split(",")
+    this.paneOb.csvData = {}
+    headers.map(e => {
+      this.paneOb.csvData[e.toLowerCase()] = []
+    })
+    // read through the rest of the lines and add them to the data
+    // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
+    for (let iLine = 1; iLine < lines.length; iLine++) {
+      let entries = lines[iLine].split(",")
+      for (let i = 0; i < entries.length; i++) {
+        this.paneOb.csvData[headers[i].toLowerCase()].push(entries[i])
+      }
+    }
+  }
+  mkradio(view) {
+    let rad = document.createElement("input")
+    rad.type = "radio"
+    rad.id = "radio" + view
+    rad.name = "view"
+    rad.value = view
+    let label = document.createElement("label")
+    label.setAttribute("for", rad.id)
+    label.innerHTML = view
+    let div = document.createElement("div")
+    div.className = "radcontainer"
+    div.id = "radcontainer" + view
+    div.append(rad)
+    div.append(label)
+    this.ctrlDiv.append(div)
+    // add this.paneOb.brainView on change
+    rad.addEventListener("click", () => {
+      this.paneOb.brainView = rad.value
+      // also update the max for the slider
+      this.slider.max = this.sliderSlices[this.paneOb.brainView].length - 1
+      let e = new Event("radiobuttonchanged")
+      if (this.eTarget) {
+        let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
+        this.paneOb.sliceData = slice
+        this.eTarget.dispatchEvent(e)
+      }
+    })
+  }
+  // this is the part for creating the column selection area
+  // deals with the csv data
+  createSelector() {
+
+    // this is the selection element that is populated by the column names in the csv
+
+    let valueColumnSelect = document.createElement("select")
+    valueColumnSelect.id = "fillCol"
+    for (let key of Object.keys(this.paneOb.csvData)) {
+      let option = document.createElement("option")
+      option.value = key
+      option.innerHTML = key
+      valueColumnSelect.append(option)
+    }
+    this.ctrlDiv.append(valueColumnSelect)
+    valueColumnSelect.onchange = () => {
+      // make access to the selector possible
+      this.paneOb.fillColValue = valueColumnSelect.value
+      // parse the data into numeric
+      let numericData = this.paneOb.csvData[valueColumnSelect.value].map(e => parseFloat(e))
+      this.paneOb.initialColData = numericData
+
+      // establish filters for the selected column of data
+      this.createFilters()
+
+      // trigger a valcolchange event
+      // this will make the filters update themselves, and make the canvas redraw the 
+      let e = new Event("valcolchange")
+      // update the canvas columdata somehow
+      if (this.eTarget) {
+        // send it to the canvas
+        this.eTarget.dispatchEvent(e)
+      }
+    }
+  }
+  prepRangeData() {
+    let slicesByView = {
+      "sagittal": [],
+      "axial": [],
+      "coronal": []
+    }
+    for (let n in this.paneOb.regionBoundaryData) {
+      if (n.search(/cor/) == 0) {
+        slicesByView["coronal"].push(n)
+      }
+      if (n.search(/sag/) == 0) {
+        slicesByView["sagittal"].push(n)
+      }
+      if (n.search(/ax/) == 0) {
+        slicesByView["axial"].push(n)
+      }
+    }
+    let sortfunc = (x, y) => {
+      let xmm = parseInt(x.match(/(-?\d+\.?\d*?)(mm)?/)[1])
+      let ymm = parseInt(y.match(/(-?\d+\.?\d*?)(mm)?/)[1])
+      return xmm - ymm
+    }
+    slicesByView.axial.sort(sortfunc)
+    slicesByView.sagittal.sort(sortfunc)
+    slicesByView.coronal.sort(sortfunc)
+    this.sliderSlices = slicesByView
+    // get the array of values
+    this.sliderMeasurements = {}
+    this.sliderMeasurements.axial = slicesByView.axial.map(sl => {
+      return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
+    })
+    this.sliderMeasurements.sagittal = slicesByView.sagittal.map(sl => {
+      console.log(sl)
+      return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
+    })
+    this.sliderMeasurements.coronal = slicesByView.coronal.map(sl => {
+      console.log(sl)
+      return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
+    })
+  }
+  // deals with the boundary data 
+  createSlider() {
+    //initiate the slider
+    let range = document.createElement("input")
+    range.id = "rangeslider"
+    let label = document.createElement("label")
+    label.id = "rangesliderlabel"
+    range.name = "slicerange"
+    range.type = "range"
+    label.setAttribute("for", "slicerange")
+    this.ctrlDiv.append(range)
+    this.ctrlDiv.append(label)
+    this.slider = range
+    this.sliderlabel = label
+    // makes several attributes helpful for handling slider change
+    this.prepRangeData()
+    // add the on input event emitter  for when slider moves
+    // 
+    this.slider.oninput = () => {
+      this.selectedSliceIndex = parseInt(this.slider.value)
+      // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
+      let ind = parseInt(range.value)
+      this.paneOb.sliderIndex = ind
+      // having trouble getting the
+      let name = this.sliderSlices[this.paneOb.brainView][ind]
+      this.paneOb.sliceName = name
+      this.sliderlabel.innerHTML = this.sliderMeasurements[this.paneOb.brainView][ind]
+      this.paneOb.sliceMeasure = this.sliderlabel.innerHTML
+      // provide the name of the slice to the canvas drawing machinery
+      // ....
+      let e = new Event("sliderchange")
+      if (this.eTarget) {
+        let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
+        this.paneOb.sliceData = slice
+        this.eTarget.dispatchEvent(e)
+      }
+    }
+  }
+  // prepare the filters
+  createFilters() {
+    if (this.activityFilter) {
+      this.activityFilter.remove()
+    }
+    this.activityFilter = new FillColFilter(this.ctrlDiv, this.paneOb.initialColData, this.eTarget, this.paneOb)
+    this.activityFilter.init()
+    // set them at default values
+    // categorical filters
+    if (this.categoricalFilter) {
+      this.categoricalFilter.remove()
+    }
+    this.categoricalFilter = new AltHolder(this.ctrlDiv, this.paneOb)
+    this.categoricalFilter.init()
+
+
+  }
+}
+
+class AltColumnFilters {
+  // 
+  constructor(outerHolder, paneOb) {
+    this.outerHolder = outerHolder
+    this.paneOb = paneOb
+    this.holder = document.createElement("div")
+    this.holder.className = "altFilterRow"
+    this.expInfo = {}
+    //
+
+  }
+  // process should look like, first have a selector for the column names of the csv
+  // then on select, detect whether you should make numerical or categorical options make selections for the == and != , then the unique column
+  init() {
+    this.outerHolder.append(this.holder)
+    this.removeBtn = document.createElement("button")
+    this.removeBtn.innerHTML = "X"
+    this.removeBtn.addEventListener("click", this.removeSelf.bind(this))
+    this.holder.append(this.removeBtn)
+    // make the first select element of the csv columns
+    this.columnSelector()
+    // add x button that removes the whole element, double check 
+    // delete
+
+
+  }
+  makeSelectUnique() {
+    this.catSelect = document.createElement("select")
+    this.catSelect.id = "val"
+    for (let op of uniqueSet) {
+      let option = document.createElement("option")
+      this.catSelect.append(option)
+      option.value = op
+      option.innerHTML = op
+    }
+  }
+  columnSelector() {
+    this.altColSelect = document.createElement("select")
+    // the column names of the csv
+    this.altColSelect.id = "colname"
+    for (let colOption in this.paneOb.csvData) {
+      //
+      let option = document.createElement("option")
+      this.altColSelect.append(option)
+      option.value = colOption
+      option.innerHTML = colOption
+    }
+    this.holder.append(this.altColSelect)
+    // on change, replace the other elements with new operation and selector
+    this.altColSelect.onchange = this.generateOperations.bind(this)
+
+  }
+  generateOperations() {
+    // check whether the column is numeric
+    this.expInfo["name"] = this.altColSelect.value
+    this.paneOb.altFiltersState[this.id].colname = this.altColSelect.value
+    if (parseFloat(this.paneOb.csvData[this.altColSelect.value][0])) {
+      // the value was numeric, t
+      this.operation = document.createElement("select")
+      this.operation.id = "op"
+      let equals = document.createElement("option")
+      equals.innerHTML = "<"
+      equals.value = "<"
+      let notEquals = document.createElement("option")
+      notEquals.innerHTML = ">"
+      notEquals.value = ">"
+      this.operation.append(equals)
+      this.operation.append(notEquals)
+      this.holder.append(this.operation)
+      // create an input point for value input
+      this.valueSelector = document.createElement("input")
+      this.valueSelector.type = "text"
+      this.holder.append(this.valueSelector)
+      this.operation.onchange = this.mask.bind(this)
+      this.valueSelector.onchange = this.mask.bind(this)
+
+    } else {
+      // remove existing elements too
+      // generate the == != select
+      this.operation = document.createElement("select")
+      this.operation.id = "op"
+      let equals = document.createElement("option")
+      equals.innerHTML = "=="
+      equals.value = "=="
+      let notEquals = document.createElement("option")
+      notEquals.innerHTML = "!="
+      notEquals.value = "!="
+      this.operation.append(equals)
+      this.operation.append(notEquals)
+      this.holder.append(this.operation)
+
+      // make a populated selector with unique options from the column
+      this.findUniqueElements()
+      this.valueSelector = document.createElement("select")
+      this.valueSelector.id = "val"
+      for (let op of this.uniqueSet) {
+        //make an option with each
+        let opele = document.createElement("option")
+        opele.value = op
+        opele.innerHTML = op
+        this.valueSelector.append(opele)
+      }
+      this.holder.append(this.valueSelector)
+      // do mask on both the selectors change
+      this.operation.onchange = this.mask.bind(this)
+      this.valueSelector.onchange = this.mask.bind(this)
+      // mask using  defaults
+      this.mask()
+    }
+  }
+  // generate a 0 1 vector to determine whether the filter should keep or toss a fillColumn value
+  mask() {
+    this.expInfo["operation"] = this.operation.value
+    this.expInfo["value"] = this.valueSelector.value
+    this.paneOb.altFiltersState[this.id].op = this.operation.value
+    this.paneOb.altFiltersState[this.id].val = this.valueSelector.value
+    this.boolMask = this.paneOb.csvData[this.altColSelect.value].map(e => {
+      if (this.operation.value == "==") {
+        if (e == this.valueSelector.value) {
+          return 1
+        }
+        return 0
+      }
+      if (this.operation.value == "!=") {
+        if (e != this.valueSelector.value) {
+          return 1
+        }
+        return 0
+      }
+      if (this.operation.value == ">") {
+        if (e > parseFloat(this.valueSelector.value)) {
+          return 1
+        }
+        return 0
+      }
+      if (this.operation.value == "<") {
+        if (e < parseFloat(this.valueSelector.value)) {
+          return 1
+        }
+        return 0
+      }
+    })
+    // emit event on the holder that the altchanged
+    let altchange = new Event("altchange")
+    this.outerHolder.dispatchEvent(altchange)
+
+  }
+  findUniqueElements() {
+    this.uniqueSet = []
+    for (let element of this.paneOb.csvData[this.altColSelect.value]) {
+      if (this.uniqueSet.indexOf(element) == -1) {
+        this.uniqueSet.push(element)
+      }
+    }
+  }
+  // make it possible to take the filter out
+  removeSelf() {
+    // triggered by clicking the exit button
+    this.holder.remove()
+    // take self out of the filter list on the AltHolder ob
+    this.removeFromList(this)
+  }
+}
+
+// create a alt column filter row holder, have each of the change elements emit an event that iterates over the bool masks, and creates a sintgle altfiltered column data set, could even hook up the result of the filter to emit event thtat triggers canvas setup() draw()
+
+//  there will be one filter categorical for each pane, and within it there will be options to create a 
+//
+
+class AltHolder {
+  constructor(ctrlDiv, paneOb) {
+    // button and larger div for the elements to get added in
+    this.ctrlDiv = ctrlDiv
+    this.paneOb = paneOb
+    this.createAltRowBtn = document.createElement("button")
+    this.createAltRowBtn.innerHTML = "Create Alt Column Filter"
+    this.createAltRowBtn.id = "altfilterbutton"
+    this.altfilters = []
+  }
+  init() {
+    this.holder = document.createElement("div")
+    this.holder.id = "altcolholder"
+    this.createAltRowBtn.onclick = this.addRow.bind(this)
+    this.holder.append(this.createAltRowBtn)
+    this.ctrlDiv.append(this.holder)
+    this.idCount = 0
+    // attach the altfilters to the paneOb for export
+    this.paneOb.altFiltersState = {}
+
+  }
+  addRow() {
+    let newAlt = new AltColumnFilters(this.holder, this.paneOb)
+    newAlt.init()
+    newAlt.id = this.idCount
+    this.idCount++
+    // add to the pane collection for export as well
+    this.paneOb.altFiltersState[newAlt.id] = { colname: "", op: "", val: "" }
+    // add the removal function to take it from the list too
+
+    newAlt.removeFromList = this.removeFromList.bind(this)
+
+    this.altfilters.push(newAlt)
+    this.holder.addEventListener("altchange", this.filter.bind(this))
+
+
+  }
+  filter() {
+    //iterate over the altfilters, and then only let through the ones that work with each bool mask
+    // reduce on the intiial paneob data iterate over all the individual boolmask values
+    this.paneOb.filteredAltColData = this.paneOb.initialColData.map((e, i) => {
+      let isNa = false
+      for (let altfilter of this.altfilters) {
+        if (altfilter.boolMask[i] == 0) {
+          isNa = true
+          break
+        }
+      }
+      if (isNa) {
+        return NaN
+      } else {
+        return e
+      }
+    })
+    let e = new Event("filterChange")
+    // get the canvas element
+    this.paneOb.paneDiv.querySelector("canvas").dispatchEvent(e)
+
+    // extract filter name information to use in the tooltip
+    this.paneOb.altFilterInfo = ""
+    for (let altfilter of this.altfilters) {
+      //
+      this.paneOb.altFilterInfo += JSON.stringify(altfilter.expInfo)
+    }
+  }
+  removeFromList(ele) {
+    // go through the list and find the one that has the same values for the filtering elements
+    // columnselector && operation && valueSelector
+    let index = 0
+    for (let filter of this.altfilters) {
+      if (ele.id == filter.id) {
+        // remove it from the list 
+        this.altfilters.splice(index, 1)
+        // also remove the entry from the paneob export object
+        delete this.paneOb.altFiltersState[index]
+        // trigger remask calculation so as not to confuse whats active
+        this.filter()
+
+      }
+      index += 1
+    }
+
+
+  }
+  remove() {
+    this.holder.remove()
+    this.createAltRowBtn.remove()
+  }
+
+}
+
+class FillColFilter {
+  constructor(ctrlDiv, data, eventTarget, paneOb) {
+    this.min = undefined
+    this.max = undefined
+    this.ctrlDiv = ctrlDiv
+    this.data = data
+    this.eTarget = eventTarget
+    this.paneOb = paneOb
+  }
+  //remove the previous filter elements
+  remove() {
+    this.minlabel.remove()
+    this.maxlabel.remove()
+    this.maxel.element.remove()
+    this.minel.element.remove()
+  }
+  init() {
+    // make a range slider that updates the self filter function which is called later on activity data
+    let rangeWidth = this.ctrlDiv.getBoundingClientRect()
+    let min = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
+    let max = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
+
+
+    // establish the absmin and absmax of the column data
+    // raise hell if the data can't be sorted this way
+    this.setbounds(Math.min(...this.data), Math.max(...this.data))
+    // makes it easier to have the sliders present correct values even when negatives are involved
+    this.interpolator = interpolator()
+    // values of v go in which range from 0 to 1
+    this.interpolator.setup(0, this.absmin, 1, this.absmax)
+
+    this.maxel = max
+    this.minel = min
+    // make the draggable elements catch movement events and ensure that the filter method gets called when dragging stops
+    this.maxel.element.addEventListener("divmoved", this.filter.bind(this))
+    this.minel.element.addEventListener("divmoved", this.filter.bind(this))
+    // this si the amount of screen space that the filter div's can move, minus the width of the element
+    this.width = (rangeWidth.width / 4) - 30
+    // create labels
+    this.minlabel = document.createElement("p")
+    this.minlabel.id = "minlabel"
+    this.minlabel.className = "filterLabel"
+    this.maxlabel = document.createElement("p")
+    this.minlabel.id = "maxlabel"
+    this.maxlabel.className = "filterLabel"
+    let labelholder = document.createElement("div")
+    labelholder.id = "labelholder"
+    // prevent sliders from going over each other
+    min.additionalLimit = (v) => {
+      // stay below the max point
+      let maxleft = parseInt(max.element.style.left)
+      if (v > maxleft) {
+        min.element.style.left = `${maxleft}px`
+        this.min = maxleft
+        // update min label
+        this.minlabel.innerHTML = this.interpolator.calc(maxleft  / this.width).toFixed(5)
+        return true
+      }
+      this.min = v
+      // update min label and account for the divslider width
+      this.minlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
+      return false
+    }
+    max.additionalLimit = (v) => {
+      let minleft = parseInt(min.element.style.left)
+      if (v < minleft) {
+        max.element.style.left = `${minleft}px`
+        this.max = minleft
+        this.maxlabel.innerHTML = this.interpolator.calc(minleft  / this.width).toFixed(5)
+        return true
+      }
+      this.maxlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
+      this.max = v
+      return false
+    }
+    labelholder.append(this.minlabel, this.maxlabel)
+    this.ctrlDiv.append(min.element)
+    this.ctrlDiv.append(max.element)
+    this.ctrlDiv.append(labelholder)
+    // once placed, set this to keep in correct spot, make them sit on same line
+    max.element.style.top = `-30px` // overlap the element with the other
+    max.element.style.left = "50px"
+
+    // provide a way to initialize values via styling from import
+    this.paneOb.updateFillFilter = (importMin, importMax) => {
+      // move the divs
+      min.element.style.left = importMin + "px"
+      max.element.style.left = importMax + "px"
+      // populate the instance variables, and labels
+      min.additionalLimit(importMin)
+      max.additionalLimit(importMax)
+    }
+  }
+  filter() {
+    // calculate the actual min activity value
+    let activitymin = this.interpolator.calc(this.min / this.width).toFixed(5)
+    let activitymax = this.interpolator.calc(this.max / this.width).toFixed(5)
+    // give this information to the paneOb,useful for tooltips
+    this.paneOb.valFilterMin = activitymin
+    this.paneOb.valFilterMax = activitymax
+    this.paneOb.filteredFillColData = this.data.map(e => {
+      if (e >= activitymin && e <= activitymax) {
+        return e
+      }
+      return NaN
+    })
+    // emit an actual canvas filtered event 
+    let e = new Event("filterChange")
+    this.eTarget.dispatchEvent(e)
+
+  }
+  addData(data) {
+    this.data = data
+  }
+  setbounds(absmin, absmax) {
+    this.absmax = absmax
+    this.absmin = absmin
+  }
+}
+
+
+class divMaker {
+  constructor(width, holder) {
+    let d = document.createElement("div")
+    this.element = d
+    d.style.height = "30px"
+    d.style.width = "30px"
+    d.style.position = "relative"
+    let move = (e) => {
+      let x = e.clientX - holder.getBoundingClientRect().left
+      let left = x
+      if (left > width - 30) { // because the size of the div at the moment is 30
+        left = width - 30
+      }
+      if (left < 0) {
+        left = 0
+      }
+      if (this.additionalLimit(left)) {
+        console.log("stopped marker")
+      } else {
+        this.element.style.left = `${left}px`
+      }
+      this.v = parseInt(this.element.style.left)
+    }
+    let cancelMove = (e) => {
+      console.log("cancelling")
+      document.removeEventListener("mousemove", move)
+      document.removeEventListener("mouseup", cancelMove)
+      // emit event that canvas must redraw
+      // right now there is no etarget because this is a makediv not a ctrlop
+      let divEvent = new Event("divmoved")
+      // dispatch it with the d, and listen on the min and max to emit filter calls
+      d.dispatchEvent(divEvent)
+    }
+    let click = () => {
+      document.addEventListener("mousemove", move)
+      document.addEventListener("mouseup", cancelMove)
+    }
+    d.addEventListener("mousedown", click)
+    d.style.background = "#00000052"
+  }
+  // this function is replaced in the instances of the object, class inheritance case
+  additionalLimit(v) {
+    return undefined
+  }
+}
+
+
+class Canvas {
+  // holds stuff like the global min/max, the invisible and visible canvases, the boundary lines, and various interpolators
+  // use the ctrlInstance to get things like boundary data, and fill data when the values change
+  // use paneOb when there are needs for boundary data or filteredColData
+  constructor(paneDiv, paneOb, size, margin) {
+    this.margin = margin
+    this.size = size
+    this.can = document.createElement("canvas")
+    // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
+    // easy hack to keep performance and accuracy of interactivity on canvas
+    this.invisican = document.createElement("canvas")
+    this.invisican.id = "invisican"
+    // makes resizes not affect xy of canvas
+    this.canvasHolder = document.createElement("div")
+    this.canvasHolder.id = "canvasHolder"
+    this.infoHolder = document.createElement("div")
+    this.infoHolder.className = "infoHolder"
+    // other versions of teh data will be around later,
+    // get data for boundaries and selected value column
+    this.paneDiv = paneDiv
+    this.paneOb = paneOb
+    this.paneOb.rois = {}
+    // setup the text area for note taking
+    this.paneOb.ta = document.createElement("textarea")
+    //thi
+  }
+  // capture the this value, and let teh callback modify the canvas property coldata
+  makeRegDataMap() {
+    this.regNameToValueMap = {}
+    // drawregions without fill if nothing selected yet
+    if (this.fillData == undefined) {
+      this.paneOb.csvData["region"].map((e, i) => {
+        this.regNameToValueMap[e.replace(/\s/, "")] = NaN
+      })
+    } else {
+      this.paneOb.csvData["region"].map((e, i) => {
+        this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
+      })
+    }
+  }
+  init() {
+    // setup the canvas
+    this.canvasHolder.append(this.can)
+    this.canvasHolder.append(this.paneOb.ta)
+    this.canvasHolder.append(this.infoHolder)
+    this.paneDiv.append(this.canvasHolder)
+    this.can.height = this.size
+    this.can.width = this.size
+    this.invisican.height = this.size
+    this.invisican.width = this.size
+    //create interpolators for drawing
+    //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
+    // create the regnametoValueMap
+    this.ctx = this.can.getContext("2d")
+    this.invisictx = this.invisican.getContext("2d")
+    // take care of binding various functions to the events that get emitted
+    // events to track valcolchange,radiobuttonchanged,sliderchange, filterChange
+    // valcolchange we need to wait until something happens with the sliders?
+
+    this.can.addEventListener("click", this.getPos.bind(this))
+    //radiobutton and slider change have implications for the slice we are looking at
+    this.can.addEventListener("radiobuttonchanged", () => {
+      this.setupCanvas()
+      this.drawCanvas()
+    })
+    this.can.addEventListener("sliderchange", () => {
+      this.setupCanvas()
+      this.drawCanvas()
+    })
+
+    //activity filter change, and valcolchange mean we must update our version of the ctrlInstance coldat, requires updating the regNameToValMap also
+    this.can.addEventListener("filterChange", () => {
+      this.setupCanvas()
+      this.drawCanvas()
+    })
+
+  }
+  // this is meant to query the ctrlInstance for what view and slice index we are on
+  setupCanvas() {
+    // mingle the two filtered datasets 
+    this.fillData = []
+    // if both data filters aren't specified use whole initial range
+    if (this.paneOb.filteredFillColData == undefined &&
+      this.paneOb.filteredAltColData == undefined) {
+      this.fillData = this.paneOb.initialColData
+    } else if (this.paneOb.filteredFillColData == undefined && this.paneOb.filteredAltColData != undefined) {
+      this.fillData = this.paneOb.filteredAltColData
+    } else if (this.paneOb.filteredFillColData != undefined && this.paneOb.filteredAltColData == undefined) {
+      this.fillData = this.paneOb.filteredFillColData
+    } else {
+      // if only the activity is specified
+      // if both filters are around
+      for (let i = 0; i < this.paneOb.initialColData.length; i++) {
+        // if the two different filters have non NAN at that index add it to fill
+
+        if (isNaN(this.paneOb.filteredAltColData[i]) || isNaN(this.paneOb.filteredFillColData[i])) {
+          this.fillData.push(NaN)
+        } else {
+          this.fillData.push(this.paneOb.initialColData[i])
+
+        }
+
+      }
+    }
+    // will update the map used in the draw to determine the color of a region
+    this.makeRegDataMap()
+    // initialize the color setting for the invisican
+    let cc = color_collection(this.paneOb.sliceData.features.length)
+    this.colToRegMap = {}
+    this.regToColMap = {}
+    this.paneOb.sliceData.features.map((f, i) => {
+      // this is for the fill on the invisible canvas
+      this.regToColMap[f.properties.regionName] = cc.array[i]
+      this.colToRegMap[JSON.stringify(cc.array[i])] = f.properties.regionName
+    })
+    this.calcRegionSizeGlobal()
+    // this will happen at the beginning before column selection
+    if (this.fillData != undefined) {
+      this.calcValueColMinMax()
+    }
+    // create the region data to screen space interpolators
+    let xinterp = interpolator()
+    let yinterp = interpolator()
+    // use correct ratio
+    if (this.canvasRatio > 1) {
+      xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width / this.canvasRatio - this.margin)
+      yinterp.setup(this.regionSizes[1], (this.can.height - this.margin), this.regionSizes[3], this.margin)// extra 10is the margin split intwo
+
+    } else {
+
+      xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width - this.margin)
+      yinterp.setup(this.regionSizes[1], this.can.height * this.canvasRatio - this.margin, this.regionSizes[3], this.margin)// extra 10is the margin split intwo
+    }
+    this.yinterp = yinterp
+    this.xinterp = xinterp
+  }
+  tooltipMaker(regionName, inner) {
+    // make a little side box with the info in it
+    // take away a chunk of the image at that area
+    // remove any improper characters for the id
+    let id = regionName.replace(/[-_]/g, "")
+    let rightDiv = document.createElement("div")
+    rightDiv.id = "tooltip" + id
+    rightDiv.innerHTML = inner        //put new info in front of notes to canvas element if possible
+    this.infoHolder.prepend(rightDiv)
+    // add tooltip to the rois tooltip array
+  }
+  // add a tracker for regions clicked
+  // populate elements on canvas like roi's which stores the region name, 
+  // at draw time if region is in the roi list stroke it in purple, or green? ask josh what he thinks?
+  // look at complementary colors for r b 
+  // if they click in the same region again it should toggle it off and out of the listing
+  getPos(e) {
+    // the drawing holds both canvases, so we can get the x,y from the click, and apply it to the invisible can
+    let rect = this.can.getBoundingClientRect()
+    let x = e.clientX - rect.left
+    let y = e.clientY - rect.top
+    let ctx = this.invisictx
+    // activate the border point-in-polygon algorithm
+    // get image data
+    // loop until we move right to get a pix value that is above certain threshold green
+    let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
+    // query the invisible map
+    if (this.colToRegMap[JSON.stringify(pix)] != undefined) {
+      let regionName = this.colToRegMap[JSON.stringify(pix)]
+      if (this.paneOb.rois[regionName] != undefined) {
+        delete this.paneOb.rois[regionName]
+      } else {
+        this.paneOb.rois[regionName] = `
+            <h3>Selected Region
+              <p class="tooltip-child" id="regionname">
+                    ${ regionName}
+              </p>
+              <p class="tooltip-child">
+            <p>value: ${this.regNameToValueMap[regionName].toFixed(5)}
+            </p><p>view: ${this.paneOb.brainView}
+            </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
+            </p><p>slice: ${this.paneOb.sliceMeasure}
+
+              </p><p>altfilterinfo:${this.paneOb.altFilterInfo}</p>
+            </h3>
+            `
+
+
+      }
+      // do a redraw
+      this.drawCanvas()
+    }
+  }
+  resize(height, width, margin) {
+    this.can.height = height + margin
+    this.can.width = width + margin
+    this.invisican.height = height + margin
+    this.invisican.width = width + margin
+    this.ctx.lineWidth = lwidth
+    this.invisictx.lineWidth = lwidth
+  }
+  // figure out how much actual space the brain region data takes up, this only needs to get figured out once per pane creation
+  calcRegionSizeGlobal() {
+    // scanCol is the column that has the data we care about putting in the color fill
+    // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
+    //!! should only do this part once
+    let globals = [1000, 1000, -1000, -1000]
+    for (let feature of this.paneOb.sliceData.features) {
+      // likely nota  loop because coordinates is a single element array
+      for (let line of feature.geometry.coordinates) {
+        for (let pt of line) {
+          if (pt[0] < globals[0]) {
+            globals[0] = pt[0]
+          }
+          if (pt[1] < globals[1]) {
+            globals[1] = pt[1]
+          }
+          if (pt[0] > globals[2]) {
+            globals[2] = pt[0]
+          }
+          if (pt[1] > globals[3]) {
+            globals[3] = pt[1]
+          }
+        }
+      }
+    }
+    this.regionSizes = globals
+    this.canvasRatio = globals[3] / globals[2]
+  }
+  // calculate the min and max of the column provided to the canvas class
+  calcValueColMinMax() {
+    this.scanDatamin = 0
+    this.scanDatamax = 0
+    for (let row of this.fillData) {
+      if (row > this.scanDatamax) {
+        this.scanDatamax = parseFloat(row)
+      }
+      if (row < this.scanDatamin) {
+        this.scanDatamin = parseFloat(row)
+      }
+    }
+    // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
+    let valToColInterp = interpolator()
+    valToColInterp.setup(this.scanDatamin, 0, this.scanDatamax, 1)
+    this.valToColInterp = valToColInterp
+    // calculate the min and maxes of the scan data for each scan
+  }
+
+  drawCanvas() {
+    //TODO find better version of how to structure so that the margin can be programmatically set
+    this.ctx.clearRect(0, 0, this.can.width, this.can.height)
+    this.invisictx.clearRect(0, 0, this.can.width, this.can.height)
+    // remove previous tooltips
+    while (this.infoHolder.firstChild) {
+      this.infoHolder.removeChild(this.infoHolder.firstChild)
+    }
+    let red = {
+      r: 255,
+      g: 0,
+      b: 0,
+    }
+    let gray = {
+      r: 128,
+      g: 128,
+      b: 128
+    }
+    let blue = {
+      r: 0,
+      g: 0,
+      b: 255
+    }
+    // iterate over the boundary data
+    for (let region of this.paneOb.sliceData.features) {
+      // this is the object that has features, and properties
+      for (let coords of region.geometry.coordinates) {
+        this.ctx.beginPath()
+        this.invisictx.beginPath()
+        // create simplified variable with points and region name
+        let linedata = { points: coords, region: region.properties.regionName }
+
+        // begin actual drawing to the canvas
+        let first = linedata.points[0]
+        let x = this.xinterp.calc(first[0])
+        let y = this.yinterp.calc(first[1])
+        this.ctx.moveTo(x, y)
+        this.invisictx.moveTo(x, y)
+        for (let i = 1; i < linedata.points.length; i++) {
+          let pt = linedata.points[i]
+          let x = this.xinterp.calc(pt[0])
+          let y = this.yinterp.calc(pt[1])
+          this.ctx.lineTo(x, y)
+          this.invisictx.lineTo(x, y)
+        }
+        this.ctx.closePath()
+        this.invisictx.closePath()
+        // check if its a roilisted
+        if (this.paneOb.rois[linedata.region]) {
+          if (this.paneOb.rois[linedata.region]) {
+            this.ctx.strokeStyle = "yellow"
+            this.ctx.lineWidth = 5
+            this.ctx.stroke()
+          }
+          // add tooltips that are visible
+          let regId = linedata.region.replace(/[-_]/g, "")
+          // if we don't find the element must make the tooltip
+          if (!document.getElementById(`tooltip${regId}`)) {
+            this.tooltipMaker(linedata.region, this.paneOb.rois[linedata.region])
+          }
+        }
+
+        // these aren't defined yet
+        if (this.regNameToValueMap != undefined) {
+          if (this.regNameToValueMap[linedata.region]) {
+            let scanData = this.regNameToValueMap[linedata.region]
+            let t = this.valToColInterp.calc(scanData)
+            let lerpc
+            if (scanData < 0) {
+              // use the blue to gray instead of gray to red
+              lerpc = LerpCol(blue, gray, t, 2)
+            } else {
+              lerpc = LerpCol(gray, red, t, 2)
+            }
+            this.ctx.fillStyle = lerpc
+            this.ctx.fill()
+            // query the region to color map
+          } else {
+            // leave the section gray
+            this.ctx.fillStyle = "gray";
+            this.ctx.fill();
+          }
+        }
+        this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
+        this.invisictx.fill()
+      }
+    }
+  }
+}
+
+// non full blown classes
+let color_collection = (rnum) => {
+  ob = {}
+  // this is the number of color chunks for each of the rgb channels
+  let colordim = Math.ceil(Math.pow(rnum, 1 / 3))
+  ob.array = []
+  // nesting 3 deep, but each should be short
+  for (let r = 0; r < colordim; r++) {
+    for (let g = 0; g < colordim; g++) {
+      for (let b = 0; b < colordim; b++) {
+        let base = 255 / colordim // the base is permuted by each of the rgb loop variables
+        // must round because the canvas sampling by pixel doesn't return floats
+        ob.array.push([Math.round(base * r), Math.round(base * g), Math.round(base * b)])
+      }
+    }
+  }
+  return ob
+}
+
 let parametricInterp = () => {
   let ob = {}
-  ob.setupRun = (x0,y0,x1,y1,step) => {
+  ob.setupRun = (x0, y0, x1, y1, step) => {
     let xys = []
-    for (let t = 0;t < 1;t+= step) {
-      xys.push(ob.calct(x0,y0,x1,y1,t))
+    for (let t = 0; t < 1; t += step) {
+      xys.push(ob.calct(x0, y0, x1, y1, t))
     }
     return xys
   }
-  ob.calct = (x0,y0,x1,y1,t) => {
-    return [x0 + (x1 - x0)*t,y0 + (y1 - y0)*t]
+  ob.calct = (x0, y0, x1, y1, t) => {
+    return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]
   }
-  return ob 
+  return ob
 }
 let interpolator = () => {
   let ob = {}
-  ob.setup = (x0,y0,x1,y1) => {
+  ob.setup = (x0, y0, x1, y1) => {
     ob.x0 = x0
     ob.y0 = y0
     ob.x1 = x1
     ob.y1 = y1
   }
   ob.calc = (x) => {
-    return (ob.y1-ob.y0)/(ob.x1 -ob.x0)*x + (ob.x1*ob.y0 - ob.y1 * ob.x0)/(ob.x1 - ob.x0)
+    return (ob.y1 - ob.y0) / (ob.x1 - ob.x0) * x + (ob.x1 * ob.y0 - ob.y1 * ob.x0) / (ob.x1 - ob.x0)
   }
   return ob
 }
 
-let LerpCol = (c1,c2,t,jitter) => {
-  let red = Math.round(c1.r + ( c2.r - c1.r) *t + Math.random()*jitter)
+let LerpCol = (c1, c2, t, jitter) => {
+  let red = Math.round(c1.r + (c2.r - c1.r) * t + Math.random() * jitter)
   if (red > 255) {
     red = 255
   }
-  let blue = Math.round(c1.b + ( c2.b - c1.b) *t+ Math.random()*jitter)
+  let blue = Math.round(c1.b + (c2.b - c1.b) * t + Math.random() * jitter)
   if (blue > 255) {
     blue = 255
   }
-  let green = Math.round(c1.g + ( c2.g - c1.g) *t+ Math.random()*jitter)
+  let green = Math.round(c1.g + (c2.g - c1.g) * t + Math.random() * jitter)
   if (green > 255) {
     green = 255
   }
@@ -52,823 +1215,7 @@ let LerpCol = (c1,c2,t,jitter) => {
 
 }
 
-let globals = (activationData)=> {
-  // scanCol is the column that has the data we care about putting in the color fill
-  // this returns a summary object that knows things about the size of the brain json dimensions and also the min and max of hte scan data
-  let ob ={}
-  let globals = [1000,1000,-1000,-1000]
-  for (let feature of brain.features) {
-    for (let line of feature.geometry.coordinates) {
-      for (let pt of line) {
-        if (pt[0] < globals[0]) {
-          globals[0] = pt[0]
-        }
-        if( pt[1] < globals[1] ){
-          globals[1] = pt[1]
-        }
-        if (pt[0] > globals[2]) {
-          globals[2] = pt[0]
-        }
-        if( pt[1] > globals[3]) {
-          globals[3] = pt[1]
-        }
-      }
-    }
-  }
-  ob.globals = globals
-  ob.ratio = globals[3]/globals[2]
-  ob.scanDatamin =0
-  ob.scanDatamax =0
-  for (let row of activationData ) {
-    if (row > ob.scanDatamax) {
-      ob.scanDatamax = parseFloat(row)
-    }
-    if (row < ob.scanDatamin) {
-      ob.scanDatamin = parseFloat(row)
-    }
-  }
-  // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
-  let scanScalar =interpolator()
-  scanScalar.setup(ob.scanDatamin,0,ob.scanDatamax,1)
-  ob.scanScalar = scanScalar
-  // calculate the min and maxes of the scan data for each scan
-  return ob
-}
-
-let drawLine = (linedata,ctx,activationData)=> {
-  //linedata  = {points,region}
-  let ob = {}
-  // need canvas ref
-  //create interpolator
-  //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
-  let xinterp = interpolator()
-  xinterp.setup(globalinfo.globals[0],0+10,globalinfo.globals[2],500+10)
-  let yinterp = interpolator()
-  yinterp.setup(globalinfo.globals[1],(500+10)*globalinfo.ratio,globalinfo.globals[3],10)// extra 10is the margin split intwo
-  //TODO find better version of how to structure so that the margin can be programmatically set
-  ob.draw =() => {
-    ctx.beginPath()
-    let red = {
-      r:255,
-      g:0,
-      b:0,
-    }
-    let yellow = {
-      r:255,
-      g:255,
-      b:255
-    }
-    let first = linedata.points[0]
-    let x = xinterp.calc(first[0])
-    let y = yinterp.calc(first[1])
-    let xbounds = {min:x,max:x}
-    let ybounds = {min:y,max:y}
-    let last = [x,y]
-    // create gaplessEntry
-    pointValues[linedata.region] =[[x,y]]
-    ctx.moveTo(x,y)
-    for (let i = 1; i < linedata.points.length;i++) {
-      let pt = linedata.points[i]
-      let x = xinterp.calc(pt[0])
-      let y = yinterp.calc(pt[1])
-      if (xbounds.min > x) {
-        xbounds.min = x
-      }
-      if (xbounds.max < x) {
-        xbounds.max = x
-      }
-      if (ybounds.max < y) {
-        ybounds.max = y
-      }
-      if (ybounds.min > y) {
-        ybounds.min = y
-      }
-      // do parametric interpolation of points between last x,y and the present one
-      //
-      pointValues[linedata.region].push([x,y])
-      ctx.lineTo(x,y)
-      // update the data
-    }
-    ctx.closePath()
-    // TODO make th colors unique using lerp of range by area count
-    let activity = false
-    for (let i =0; i < activationData.length; i++) {
-      let activationValue = activationData[i]
-      // check to see if the data we have belongs in this region
-      if ( linedata.region == csvRegionArray[i]) {
-        // the min appears to be almost 0 and the max should come in around 0.006
-        let scanData = parseFloat(activationValue)
-        // add the float value to the region map
-        if (! isNaN(scanData)) {
-          let  t = globalinfo.scanScalar.calc(scanData)
-          let lerpc = LerpCol(yellow,red,t,2)
-          ctx.fillStyle=lerpc
-          ctx.fill()
-          activity =true
-          regionMap[lerpc] = {activation: scanData,name:linedata.region}
-        }
-        break
-      }
-    }
-    if (!activity) {
-    let randnum = Math.round(Math.random()*255)
-    let fillString = `rgb(${randnum},${randnum},${randnum})`
-    regionMap[fillString] = {name:linedata.region}
-    ctx.fillStyle = fillString
-    ctx.fill()
-    ctx.strokeStyle= fillString
-    ctx.stroke()
-    }
-  }
-  return ob
-}
-
-let setup = (lwidth,paneHolder) => {
-  let ob = {}
-  ob.outerHolder = paneHolder
-  ob.begin = () => {
-    let can = document.createElement("canvas")
-    ob.innerHolder = document.createElement("div")
-    ob.innerHolder.className = "innerholder"
-    ob.innerHolder.append(can)
-    paneHolder.append(ob.innerHolder)
-    ob.can = can
-    ob.ctx = can.getContext("2d")
-  }
-  ob.resize =(height,width,margin) => {
-    ob.can.height = height + margin
-    ob.can.width = width + margin
-    ob.ctx.lineWidth= lwidth
-  }
-  return ob
-}
-
-let dataBind = (drawing,data_to_bind,activationData) => {
-  // drawing has can and ctx attributes
-  // find a way get to the data we need here
-  let iter = 0  
-  for (let pline of data_to_bind.geometry.coordinates) {
-    //let data_bound = {coords:line,properties
-    //make copy of line data and bind in the region name
-    let drawingData = {
-      points:pline,
-      region:data_to_bind.properties.regionName
-    }
-    let line = drawLine(drawingData,drawing.ctx,activationData)
-    line.draw()
-    iter +=1
-  }
-}
-
-let featurePass = (drawing,upperData,activationData) => {
-  let ob = {}
-  ob.mapFeatures = () => {
-  for (let feature of upperData.features) {
-    let db = dataBind(drawing,feature,activationData)
-  }
-  }
-  return ob
-}
-
-
-// lifted from stack overflow
-
-//for each state have something which goes through the 
-//  coordinates is an array of 
-//
-// aim for as much functional as possible
-let rangePrep = ()=> {
-  // we will create and sort 3 element array of the data
-  let ob = {}
-  let slicesByView = {
-    "sagittal":[],
-    "axial":[],
-    "coronal":[]
-  }
-  for (let n in sliceData) {
-    if (n.search(/cor/) == 0) {
-      slicesByView["coronal"].push(n)
-    }
-    if (n.search(/sag/) == 0) {
-      slicesByView["sagittal"].push(n)
-    }
-    if (n.search(/ax/) == 0) {
-      slicesByView["axial"].push(n)
-    }
-  }
-  let sortfunc = (x,y) => {
-    let xmm = parseInt(x.match(/(-?\d+)(mm)?.json/)[1])
-    let ymm = parseInt(y.match(/(-?\d+)(mm)?.json/)[1])
-    return xmm - ymm
-  }
-  slicesByView.axial.sort(sortfunc)
-  slicesByView.sagittal.sort(sortfunc)
-  slicesByView.coronal.sort(sortfunc)
-  ob.slices = slicesByView
-  // get the array of values
-  ob.measurements = {}
-  ob.measurements.axial =slicesByView.axial.map(sl => {
-    return (sl.match(/(-?\d+mm)?.json/)[1])
-  })
-  ob.measurements.sagittal =slicesByView.sagittal.map(sl => {
-    return (sl.match(/(-?\d+mm)?.json/)[1])
-  })
-  ob.measurements.coronal =slicesByView.coronal.map(sl => {
-    return (sl.match(/(-?\d+mm)?.json/)[1])
-  })
-  return ob
-}
-
-let sliceSelect = (paneHolder) => {
-  let ob = {}
-  ob.createImage = (slice,drawing,activationData) =>  {
-    drawing.ctx.clearRect(0,0,drawing.can.height,drawing.can.width)
-    brain = sliceData[slice]
-    globalinfo = globals(activationData)
-    drawing.resize(500*globalinfo.ratio,500,20)
-    // data height vs width ration
-    let allfeatures = featurePass(drawing,brain,activationData)
-    allfeatures.mapFeatures()
-    let getPos = (can,e) => {
-      let rect = can.getBoundingClientRect()
-      let x = e.clientX - rect.left
-      let y = e.clientY - rect.top
-      let ctx = can.getContext("2d")
-      // activate the border point-in-polygon algorithm
-      // get image data
-      // loop until we move right to get a pix value that is above certain threshold green
-      let pix = ctx.getImageData(x,y,1,1).data
-      let colorString = `rgb(${pix[0]},${pix[1]},${pix[2]})`
-      if (regionMap[colorString] != undefined) {
-        // make a little side box with the info in it
-        // take away a chunk of the image at that area
-        let rightDiv = document.createElement("div")
-        rightDiv.id = "tooltip"
-        rightDiv.innerHTML = `
-<h3>Selected Region
-  <p class="tooltip-child">
-        ${ regionMap[colorString].name }
-  </p>
-  <p class="tooltip-child">
-activity value: ${regionMap[colorString].activation}
-  </p>
-</h3>
-`
-        //append to canvas element if possible
-        drawing.innerHolder.append(rightDiv)
-        setTimeout(()=>{
-          // replace the original pixels
-          rightDiv.remove()
-        },3500)
-      }
-    }
-    if (drawing.posFunc == undefined) {
-      let callGetPos = (e)=> {
-        getPos(drawing.can,e)
-      }
-      drawing.posFunc = callGetPos
-      // store function once so that adding and removing is possible
-    } else {
-      drawing.can.removeEventListener("click",drawing.posFunc)
-    }
-    drawing.can.addEventListener("click",drawing.posFunc)
-  }
-  return ob
-}
-
-
-
-let pane = (number)=> {
-  let ob = {}
-  ob.create = ()=> {
-    // want radio w 3 buttons, range slider, selection form for loading
-    let paneDiv = document.createElement("div")
-    paneDiv.className = "pane"
-    paneDiv.setAttribute("id",`paneholder${number}`)
-    let ctrlDiv = document.createElement("div")
-    ctrlDiv.className = "ctrlDiv"
-    // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
-
-    let moverDiv = document.createElement("div")
-    let moveIcon = new Image()
-    moveIcon.src = "./src/moveicon.svg"
-    moveIcon.onload = ()=> {
-      // append to the moverDiv
-      // resize probably
-      moverDiv.append(moveIcon)
-    }
-    // create the mouse up,down and move events for dragging the panes around
-    let mouseMovePane = (e)=> {
-      let topVal = e.clientY
-      let leftVal = e.clientX
-      paneDiv.style.top = `${topVal}px`
-      paneDiv.style.left = `${leftVal}px`
-    }
-    let mouseIsDown = false
-    let mouseDown = (e)=> {
-      mouseIsDown = true
-      // make the holder position absolute
-      paneDiv.style.position = "absolute"
-      // move to the position that the mouse is at
-      let topVal = e.clientY
-      let leftVal = e.clientX
-      paneDiv.style.top = `${topVal}px`
-      paneDiv.style.left = `${leftVal}px`
-      // add the move event
-      document.body.addEventListener("mousemove",mouseMovePane)
-    }
-    moverDiv.addEventListener("mousedown",mouseDown)
-    let mouseUp = (e)=> {
-      // remove the move listener 
-      if (mouseIsDown) {
-        document.body.removeEventListener("mousemove",mouseMovePane)
-      }
-    }
-    document.body.addEventListener("mouseup",mouseUp)
-    moverDiv.className = "panemover"
-    ctrlDiv.append(moverDiv)
-    paneDiv.append(ctrlDiv)
-    let mkradio = (view,radionum) => {
-      let rad = document.createElement("input")
-      rad.type = "radio"
-      rad.id = "radio"+view
-      rad.name = "view"+radionum
-      rad.value = view
-      let label = document.createElement("label") 
-      label.setAttribute("for",rad.id)
-      label.innerHTML = view
-      let div = document.createElement("div")
-      div.className = "radcontainer"
-      div.id = "radcontainer"+view
-      div.append(rad)
-      div.append(label)
-      ctrlDiv.append(div)
-    }
-    // setup the radio buttons
-    mkradio("axial",number)
-    mkradio("sagittal",number)
-    mkradio("coronal",number)
-    // setup file loader field
-    let csvloader = loader(ctrlDiv,paneDiv,number)
-    csvloader.create()
-
-    document.querySelector("#holder").append(paneDiv)
-  }
-  // setup a div with a canvas inside of it
-  return ob
-}
-
-let createCanvasDrawing = (ctrlDiv,canvasHolder,activationData,activityfilter,categoricalFilters)=>{
-  let ob = {}
-  ob.run =()=> {
-
-    let sliceSelection = sliceSelect(canvasHolder)
-    //delete previous range slider 
-    let range = document.createElement("input")
-    range.id = "rangeslider"
-    let label = document.createElement("label")
-    label.id = "rangesliderlabel"
-    range.name = "slicerange"
-    range.type="range"
-    label.setAttribute("for","slicerange")
-    ctrlDiv.append(range)
-    ctrlDiv.append(label)
-    // check for existing canvas, delete if found
-    let prevCan = canvasHolder.querySelector("canvas")
-    if (prevCan) {
-      prevCan.remove()
-    }
-    let drawing = setup(1,canvasHolder)
-    drawing.begin()
-    // only run slice selection when we have data 
-    let rangeData = rangePrep()
-    range.value = 20
-    // make the range slider tied to slice lookup
-    // start with sagittal
-    let selected = "sagittal"
-    let getRadioSelected = ()=> {
-      if (canvasHolder.querySelector("#radiosagittal").checked) {
-        selected = "sagittal"
-      }
-      if (canvasHolder.querySelector("#radiocoronal").checked) {
-        selected = "coronal"
-      }
-      if (canvasHolder.querySelector("#radioaxial").checked) {
-        selected = "axial"
-
-      }
-    }
-    canvasHolder.querySelector("#radiosagittal").checked = true
-    label.innerHTML = rangeData.measurements[selected][range.value]
-    console.log(rangeData)
-    sliceSelection.createImage(rangeData.slices[selected][5],drawing,activationData)
-    // set these for first time
-    activityfilter.setbounds(globalinfo.scanDatamin,globalinfo.scanDatamax )
-    // update filter bars
-    range.oninput = ()=> {
-      // call the filter on the activation data, and pass to create image
-        // set max and min to global min max
-      activationData = activityfilter.filter()
-      // check for categorical filters, step through the list of the filter holder and apply the filter functions of each to the activation data
-      categoricalFilters.filtersList.map(catfilter=> {
-        activationData = catfilter.filter(activationData)
-      })
-      getRadioSelected()
-      let ind = parseInt(range.value)
-      let name = rangeData.slices[selected][ind]
-      label.innerHTML = rangeData.measurements[selected][range.value]
-      range.min= 0
-      range.max = rangeData.slices[selected].length-1
-      range.step = 1
-      sliceSelection.createImage(name,drawing,activationData)
-    }
-    // add events to the filter attached so it redraws canvas also
-    //
-  }
-  return ob
-}
-// perhaps create a collection of columns filter that can give you the results of your data
-// this is a filter that can work on other columns
-
-let sepColumnFilter = (holder)=> {
-  let ob = {}
-  ob.create =()=> {
-    // borrow the column selector and create another one here
-    // have an operations bar for = or != bool on the string data
-    // and > < for the data that is numeric or parsable
-    // ?? did we decide that there was going to be anything like 
-  }
-  return ob
-}
-
-
-let makediv = (width,holder)=> {
-  let ob = {}
-  ob.additionalLimit = (v)=> {
-    return undefined
-  }
-  ob.create =() => {
-    let d = document.createElement("div")
-    ob.element = d
-    d.style.height="30px"
-    d.style.width="30px"
-    d.style.position = "relative"
-    let move =(e)=> {
-      let x = e.clientX - holder.getBoundingClientRect().left
-      let left = x
-      if (left > width- 30) { // because the size of the div at the moment is 30
-        left = width -30
-      }
-      if (left < 0) {
-        left = 0
-      }
-      if (ob.additionalLimit(left)) {
-        console.log("stopped marker")
-      } else {
-      ob.element.style.left = `${left}px`
-      }
-      ob.v = parseInt(ob.element.style.left)
-    }
-    let cancelMove =(e)=> {
-      console.log("cancelling")
-      document.removeEventListener("mousemove",move)
-      document.removeEventListener("mouseup",cancelMove)
-    }
-    let click = ()=> {
-      document.addEventListener("mousemove",move)
-      document.addEventListener("mouseup",cancelMove)
-    }
-    d.addEventListener("mousedown",click)
-    d.style.background="#00000052"
-  }
-  return ob
-}
-
-
-let activityFilter = (holder)=> {
-  let ob = {}
-  ob.min = undefined
-  ob.max = undefined
-  ob.addData = (data) => {
-    ob.data = data
-  }
-  ob.setbounds = (absmin,absmax) => {
-    ob.absmin = absmin
-    ob.absmax = absmax 
-  }
-  ob.create =() => {
-    // make a range slider that updates the self filter function which is called later on activity data
-    let rangeWidth=holder.getBoundingClientRect()
-    ob.width = rangeWidth.width
-    let min =makediv(rangeWidth.width/4,holder)
-    min.create()
-    let max = makediv(rangeWidth.width/4,holder)
-    max.create()
-    // create labels
-    ob.minlabel = document.createElement("p")
-    ob.minlabel.id="minlabel"
-    ob.minlabel.className = "filterLabel"
-    ob.maxlabel = document.createElement("p")
-    ob.minlabel.id="maxlabel"
-    ob.maxlabel.className = "filterLabel"
-    let labelholder = document.createElement("div")
-    labelholder.id = "labelholder"
-    // prevent sliders from going over each other
-    min.additionalLimit = (v)=> {
-      // stay below the max point
-      let maxleft = parseInt(max.element.style.left)
-      if (v > maxleft) {
-        min.element.style.left = `${maxleft}px`
-        ob.min = maxleft
-        // update min label
-        ob.minlabel.innerHTML = (maxleft*ob.absmax/ob.width).toFixed(5)
-        return true
-      }
-      ob.min = v
-      // update min label
-      ob.minlabel.innerHTML = (v*ob.absmax/ob.width).toFixed(5)
-      return false
-    }
-    max.additionalLimit =(v)=> {
-      let minleft = parseInt(min.element.style.left)
-      if(v < minleft) {
-        max.element.style.left = `${minleft}px`
-        ob.max = minleft
-        ob.maxlabel.innerHTML = (minleft*ob.absmax/ob.width).toFixed(5)
-        return true
-      }
-      ob.maxlabel.innerHTML = (v*ob.absmax/ob.width).toFixed(5)
-      ob.max= v
-      return false
-    }
-    labelholder.append(ob.minlabel,ob.maxlabel)
-    holder.append(min.element)
-    holder.append(max.element)
-    holder.append(labelholder)
-    // once placed, set this to keep in correct spot, make them sit on same line
-    max.element.style.top = `-30px` // overlap the element with the other
-    max.element.style.left= "50px"
-  }
-  ob.filter = () =>{
-    // calculate the actual min activity value
-    let activitymin = ob.absmax*ob.min/ob.width
-    let activitymax = ob.absmax*ob.max/ob.width
-    return ob.data.map(e=> {
-      if(e > activitymin && e < activitymax) {
-        return e
-      }
-      return NaN
-    })
-  }
-  return ob
-}
-
-// the categorical filter option
-// ?? when should I pass in the data for this??
-let altColumnFilter = ()=> {
-  let ob ={}
-  ob.setcoldata = (data) => {
-    ob.coldata = data
-  }
-  // create filter option for categorical
-  //    find unique ids in column
-  //    add selection element that has the unique ids and then a == or != thing
-  ob.createCategorical = (colData)=> {
-    let uniqueSet = []
-    for (let element of colData) {
-      if (uniqueSet.indexOf(element) == -1) {
-        uniqueSet.push(element)
-      }
-    }
-    // create a select and drop down with the options
-    ob.catSelect = document.createElement("select")
-    for (let op of uniqueSet) {
-      let option = document.createElement("option")
-      ob.catSelect.append(option)
-      option.value = op
-      option.innerHTML = op
-    }
-    // include the == and != buttons
-    ob.operation = document.createElement("select")
-    let equals = document.createElement("option")
-    equals.innerHTML = "=="
-    equals.value = "=="
-    let notEquals = document.createElement("option")
-    notEquals.innerHTML = "!="
-    notEquals.value = "!="
-    ob.operation.append(equals)
-    ob.operation.append(notEquals)
-    ob.holder.append(ob.operation)
-    ob.holder.append(ob.catSelect)
-    // add event triggered on catSelect that updates what values the filter reduce uses
-    // return a boolean array 0 1s to pair with the final filter call
-    let mask =()=> {
-      ob.boolMask = colData.map(e=> {
-      if (ob.operation.value == "==") {
-        if (e == ob.catSelect.value) {
-          return 1
-        }
-        return 0
-      }
-      if (ob.operation.value == "!=") {
-        if (e != ob.catSelect.value) {
-          return 1
-        }
-        return 0
-      }
-    })
-    }
-    mask()
-    ob.operation.onchange = mask
-    ob.catSelect.onchange = mask
-  }
-  ob.filter =(activityData) => {
-    // apply the boolmask to the data and zero/NaN out the elements that don't fit the cat
-    return activityData.map((e,i)=> {
-      if (ob.boolMask[i]) {
-        return e
-      }
-      return NaN
-    })
-  }
-
-  ob.createNumerical = (colData) => {
-    // create the range sliders
-
-  }
-
-  // create filter options for numerical
-  //    add range sliders
-
-  // call filter and return the data
-  ob.create = (holder,data)=> {
-    // select bar createdadd options to it attach a selection changed event to it
-    ob.holder = holder
-    ob.colSelect = document.createElement("select")
-    ob.colSelect.onchange = ()=> {
-      // delete the previous items
-      if (ob.operation) {
-        ob.operation.remove()
-        ob.catSelect.remove()
-      }
-      ob.columnData = data.data[ob.colSelect.value]
-      // hope its longer than 1 element
-      if (isNaN(parseFloat(ob.columnData[0]))) {
-        // do the categorical 
-        ob.createCategorical(ob.columnData)
-      } else {
-        // setup for numerical
-        ob.createNumerical(ob.columnData)
-      }
-    }
-    // put the options in to the select
-    for(let key of Object.keys(data.data)) {
-      let option = document.createElement("option")
-      option.value = key
-      option.innerHTML = key
-      ob.colSelect.append(option)
-    }
-    holder.append(ob.colSelect)
-  }
-  return ob
-}
-
-//  there will be one filter categorical for each pane, and within it there will be options to create a 
-//
-let altColumnFilterHolder = ()=> {
-  let ob = {}
-  ob.create = (holder,data) =>  {
-    // attributes 
-    //  data
-    ob.data = data
-    //  non-activity column filters
-    ob.filtersList =[]
-    // put in the space next to the canvas
-    let filterDiv = document.createElement("div")
-    holder.append(filterDiv)
-    let createFilterButton = document.createElement("button")
-    createFilterButton.innerHTML = "Add Alt column filter"
-    createFilterButton.addEventListener("click",()=> {
-      // call the create filter event, pass in the holder's data element,
-      // append it to the holders
-      let columnfilter = altColumnFilter()
-      columnfilter.create(filterDiv,ob.data)
-      ob.filtersList.push(columnfilter)
-    })
-    holder.append(createFilterButton)
-  }
-  // run categorical filters on the object's data
-  // pass that data to the drawing tool so that it doesn't have to re filter every single time the other aspects of the program get used
-  return ob
-}
-
-
-let selectorCreators = (data,holder,canvasHolder,id)=> {
-  let ob = {}
-  ob.create = ()=> {
-    // create the activity selector
-    // piggy back on this to create the categorical filter too
-    let catFilter=altColumnFilterHolder()
-    
-    catFilter.create(canvasHolder,data)
-    let activitySelect = document.createElement("select")
-    for(let key of Object.keys(data.data)) {
-      let option = document.createElement("option")
-      option.value = key
-      option.innerHTML = key
-      activitySelect.append(option)
-    }
-    holder.append(activitySelect)
-    //create the activity filterselector
-    let filter = activityFilter(holder)
-    filter.create()
-    activitySelect.onchange = ()=> {
-      //csvData[id] = data.data[activitySelect.value]
-      csvRegionArray = data.data["regionName"]
-      // create the drawings from the slice data
-      // parse the data into numeric
-      let numericData =data.data[activitySelect.value].map(e=> parseFloat(e))
-      filter.addData(numericData)
-      let drawing = createCanvasDrawing(holder,canvasHolder,numericData,filter,catFilter)
-      drawing.run()
-    }
-
-  }
-  return ob 
-}
-
-let loader = (holder,canvasHolder,id)=> {
-  let ob = {}
-  // still a bit trigger happy
-  ob.create = () => {
-        let data = csvDataReader(BrainData)
-        data.parse()
-        // delete the previous column selector
-        let prevSelect = canvasHolder.querySelector("select")
-        if (prevSelect) {
-          prevSelect.remove()
-        }
-        let prevRange = canvasHolder.querySelector("#rangeslider")
-        if (prevRange) {
-          prevRange.remove()
-        }
-        let prevLabel = canvasHolder.querySelector("#rangesliderlabel")
-        if (prevLabel) {
-          prevLabel.remove()
-        }
-        // create a select option for the columns of the data now
-        let selectors = selectorCreators(data,holder,canvasHolder,id)
-        selectors.create()
-      // trigger creation of column selection tool with the names from the first line, and pass this to the pane drawing tool
-  }
-  return ob
-}
-let csvDataReader = (csvRawString)=> {
-  let ob = {}
-  ob.parse= ()=> {
-    // !! think carefully about the types of errors that might come up here
-    // turn this into a json that has the names of the columns as fields, and each has an array which is the data that follows
-    let lines  = csvRawString.split("\r")
-    let headers = lines[0].split(",")
-    ob.data = {}
-    headers.map(e=> {
-      ob.data[e] = []
-    })
-    // read through the rest of the lines and add them to the data
-    // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
-    for (let iLine = 1;iLine < lines.length;iLine++) {
-      let entries =  lines[iLine].split(",")
-      for (let i = 0; i < entries.length;i++) {
-        ob.data[headers[i]].push(entries[i])
-      }
-    }
-  }
-  return ob
-}
-
-let addButton = ()=> {
-  let ob = {}
-  ob.count = 0
-  ob.create = ()=> {
-    let btndiv = document.createElement("div")
-    btndiv.id = "btnholder"
-    let btn = document.createElement("button")
-    btn.onclick = ()=> {
-      // create a pane
-      let first = pane(ob.count)
-      first.create(ob.count)
-      ob.count+=1
-    }
-    btn.setAttribute("id","addbtn")
-    btn.innerHTML = "Add Pane"
-    btndiv.append(btn)
-    document.querySelector("#holder").append(btndiv)
-
-  }
-  return ob
-}
-
-function Run() {
-  let btn1 = addButton()
-  btn1.create()
+window.onload = async () => {
+  let app = new Application()
+  await app.addButton()
 }

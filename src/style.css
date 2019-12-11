@@ -1,4 +1,5 @@
 body {
+  overflow:scroll;
   height:100vw;
   font-size:1.5vh;
 }
@@ -20,7 +21,6 @@ body {
   content:")";
 }
 .ctrlDiv {
-  background:gray;
 }
 .radcontainer{
   display:inline;
@@ -31,7 +31,7 @@ body {
   margin:auto 0;
   width:25%;
 }
-.innerholder {
+.infoHolder {
   display:flex;
 }
 .panemover {
