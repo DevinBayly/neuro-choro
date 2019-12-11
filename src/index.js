@@ -132,6 +132,7 @@ class Application {
       // set the csvData from the pane to the paneObcsvText
       activePane.csvText = pane.csvText
       // find way to make it to createSelector
+      debugger
       this.ctrlop.csvDataReader()
       this.ctrlop.createSelector()
       // set the fillCol to the previous 
@@ -686,6 +687,7 @@ class AltColumnFilters {
       /**  */
       this.valueSelector = document.createElement("input")
       this.valueSelector.type = "text"
+      this.valueSelector.id = "val"
       this.holder.append(this.valueSelector)
       this.operation.onchange = this.mask.bind(this)
       this.valueSelector.onchange = this.mask.bind(this)
@@ -1296,7 +1298,9 @@ class Canvas {
       }
     }
     // will update the map used in the draw to determine the color of a region
+    if (this.paneOb.csvData) {
     this.makeRegDataMap()
+    }
     // initialize the color setting for the invisican
     let cc = color_collection(this.paneOb.sliceData.features.length)
     /**  */
@@ -1530,6 +1534,9 @@ class Canvas {
           }
         }
 
+        // default fill gray, update if nec
+          this.ctx.fillStyle = "gray"
+          this.ctx.fill()
         // these aren't defined yet
         if (this.regNameToValueMap != undefined) {
           if (this.regNameToValueMap[linedata.region]) {
@@ -1545,11 +1552,7 @@ class Canvas {
             this.ctx.fillStyle = lerpc
             this.ctx.fill()
             // query the region to color map
-          } else {
-            // leave the section gray
-            this.ctx.fillStyle = "gray";
-            this.ctx.fill();
-          }
+          } 
         }
         this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
         this.invisictx.fill()
