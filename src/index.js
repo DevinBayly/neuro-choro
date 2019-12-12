@@ -438,16 +438,16 @@ class CtrlOp {
   mkradio(view) {
     let rad = document.createElement("input")
     rad.type = "radio"
+    // inclusion of panediv.id  makes the selection specific to the pane so that other panes don't get un checked when a selection is made
     rad.id = "radio" + view
-    rad.name = "view"
+    rad.name = "view" + this.paneOb.paneDiv.id
     rad.value = view
     let label = document.createElement("label")
-    label.setAttribute("for", rad.id)
     label.innerHTML = view
     let div = document.createElement("div")
     div.className = "radcontainer"
     div.id = "radcontainer" + view
-    div.append(rad)
+    label.append(rad)
     div.append(label)
     this.ctrlDiv.append(div)
     // add this.paneOb.brainView on change
