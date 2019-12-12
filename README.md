@@ -2,6 +2,7 @@
 
 
 ## Introduction
+
 [source citation]
 
 Choropleths are simple maps that display regional changes as color (e.g., a US map showing states that lean Democrat vs Republican). Here is an example of a brain choropleth.
@@ -15,7 +16,7 @@ Patterson, D. K., Hicks, T., Dufilie, A. S., Grinstein, G., & Plante, E. (2015).
 Obviously brain choropleths are most valueable if you can choose the slice to view and display information about the regions in each slice. The original dynamic Weave visualizations allowed slice stacking. However, you will need to enable Adobe Flash to view the Weave visualizations, and Weave is no longer available. For this reason, we needed a new implementation. See Devin Bayly’s Neuro-choropleths Iodide Notebook. This work was supported by the University of Arizona HPC center. It uses Javascript to display GeoJSON slices and regional information. It is very fast, but still a work in progress as of 11/18/2019.
 
 
-[source]: https://neuroimaging-core-docs.readthedocs.io/en/latest/pages/choropleths.html
+[source citation]: https://neuroimaging-core-docs.readthedocs.io/en/latest/pages/choropleths.html
 
 ## Access
 
