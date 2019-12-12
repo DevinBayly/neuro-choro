@@ -377,6 +377,11 @@ class CtrlOp {
     this.mkradio("sagittal")
     this.mkradio("coronal")
     // selected is the radio button we have selected
+    /** The view that has been selected to view the slices of the brain from. Stored on pane for export and import of sessions.
+     * @alias brainView
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.brainView = "sagittal" // default
     this.paneOb.paneDiv.querySelector("#radiosagittal").checked = true
 
@@ -416,6 +421,11 @@ class CtrlOp {
     // NOTE each row must either end with a \r or a \n
     let lines = this.paneOb.csvText.replace(/\r?\n/g, "---").split("---")
     let headers = lines[0].split(",")
+    /** The parsed object of the initial CSV text. Each column header is now a field on the object, and a list of the numeric data in the column is the value.
+     * @alias csvData
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.csvData = {}
     headers.map(e => {
       this.paneOb.csvData[e.toLowerCase()] = []
@@ -488,9 +498,21 @@ class CtrlOp {
     this.ctrlDiv.append(valueColumnSelect)
     valueColumnSelect.onchange = () => {
       // make access to the selector possible
+
+    /** This is the name of the column selected for use as the fill color of the regions drawn to the canvas.
+     * @alias fillColValue
+     * @memberof Pane
+     * @instance
+    */
       this.paneOb.fillColValue = valueColumnSelect.value
       // parse the data into numeric
       let numericData = this.paneOb.csvData[valueColumnSelect.value].map(e => parseFloat(e))
+
+    /** This is a copy of the unfiltered numeric data in the fill column of the CSV.
+     * @alias initialColData
+     * @memberof Pane
+     * @instance
+    */
       this.paneOb.initialColData = numericData
 
       // establish filters for the selected column of data
@@ -579,17 +601,38 @@ class CtrlOp {
       this.selectedSliceIndex = parseInt(this.slider.value)
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
+    /** This is the value that the slider is currently set at. 
+     * @alias sliderIndex
+     * @memberof Pane
+     * @instance
+    */
       this.paneOb.sliderIndex = ind
       // name is helpful at time of export
       let name = this.sliderSlices[this.paneOb.brainView][ind]
+    /** This is the name of the slice file that we are drawing to the canvas. The actual name was once a geojson file in a directory, but now it also corresponds to an object within the regionBoundaryData attribute of the Pane as well as the application.
+     * @alias sliceName
+     * @memberof Pane
+     * @instance
+    */
       this.paneOb.sliceName = name
       this.sliderlabel.innerHTML = this.sliderMeasurements[this.paneOb.brainView][ind]
+    /** This is the particular value of the slice displayed on the canvas. Can be positive or negative and is followed by a unit of "mm".
+     * @alias sliceMeasure
+     * @memberof Pane
+     * @instance
+    */
       this.paneOb.sliceMeasure = this.sliderlabel.innerHTML
       // provide the name of the slice to the canvas drawing machinery
       // sliderchange is a custom event that the canvas is listening for
       let e = new Event("sliderchange")
       if (this.eTarget) {
         let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
+        
+    /** This is the actual object containing the regions boundary coordinates for the particular slice the user has specified using the slider and the brain view options.
+     * @alias sliceData
+     * @memberof Pane
+     * @instance
+    */
         this.paneOb.sliceData = slice
         // dispatch to the eTarget the canvas
         this.eTarget.dispatchEvent(e)
@@ -902,6 +945,12 @@ class AltHolder {
    */
   filter() {
 
+
+    /** This is the representation of the fill column after the alt column filters have been applied to it. This data will be combined with the fillColFilterData when it is time to draw to the canvas.
+     * @alias filteredAltColData
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.filteredAltColData = this.paneOb.initialColData.map((e, i) => {
       let isNa = false
       for (let altfilter of this.altfilters) {
@@ -921,6 +970,12 @@ class AltHolder {
     this.paneOb.paneDiv.querySelector("canvas").dispatchEvent(e)
 
     // extract filter name information to use in the tooltip
+
+    /** This is the active alternate column filter information used for the creation of tooltips. 
+     * @alias altFilterInfo
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.altFilterInfo = ""
     for (let altfilter of this.altfilters) {
       //
@@ -1082,6 +1137,14 @@ class FillColFilter {
     max.element.style.left = "50px"
 
     // provide a way to initialize values via styling from import
+    /** A function that allows creation of fill filter defaults at import time
+     * @alias updateFillFilter
+     * @memberof Pane
+     * @function
+     * @instance
+     * @param {*} importMin The min value that the slider should be set to
+     * @param {*} importMax the max value that the slider should be set to
+    */
     this.paneOb.updateFillFilter = (importMin, importMax) => {
       // move the divs
       min.element.style.left = importMin + "px"
@@ -1101,8 +1164,23 @@ class FillColFilter {
     let fillmin = this.interpolator.calc(this.min / this.width).toFixed(5)
     let fillmax = this.interpolator.calc(this.max / this.width).toFixed(5)
     // give this information to the paneOb,useful for tooltips
+    /** The min value in the fill data range used for filtering the fill column's data.
+     * @alias fillmin
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.valFilterMin = fillmin
+    /** The max value in the fill data range used for filtering the fill column's data.
+     * @alias fillmax
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.valFilterMax = fillmax
+    /** The data from the fill color column filtered by the min and max sliders, passed to the paneOb to be combined with the altColFilteredData at time of canvas setup and draws.
+     * @alias filteredFillColData
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.filteredFillColData = this.data.map(e => {
       if (e >= fillmin && e <= fillmax) {
         return e
@@ -1254,7 +1332,11 @@ class Canvas {
         this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
       })
     }
-    /** This attribute enables simple tools to access the filtered data being used for coloring the region so that it may be plotted.*/
+    /**This attribute enables simple tools to access the filtered data being used for coloring the region so that it may be plotted
+     * @alias dataForPlot
+     * @memberof Pane
+     * @instance
+    */
     this.paneOb.dataForPlot = this.regNameToValueMap
   }
   /**
