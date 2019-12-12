@@ -11,6 +11,10 @@ json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/G
 <div id="applicationHolder"></div>
 %% css
 
+#allpanes {
+  display:flex;
+}
+
 
 #radcontaineraxial::before {
   content:"brainviews: ";
@@ -81,6 +85,9 @@ class Application {
    */
   runApp() {
     this.addButton()
+    this.allPanes = document.createElement("div")
+    this.allPanes.id = "allpanes"
+    this.applicationHolder.append(this.allPanes)
   }
   /**
    *Generates a button within the application holder for creating panes, exporting the session, and importing
@@ -237,7 +244,7 @@ class Application {
    * @memberof Application
    */
   async addPane() {
-    let newPane = new Pane(this.applicationHolder, this.panes.length)
+    let newPane = new Pane(this.allPanes, this.panes.length)
     // pass reference to pane, to be used by ctrlOp and Canvas
     newPane.regionBoundaryData = this.regionBoundaryData
     // set the application removal function accessible in the newPane
@@ -266,11 +273,11 @@ class Application {
 class Pane {
   /**
    *Creates an instance of Pane. Initiates construction of the ctrl op object for the pane all the buttons and stuff that have control over the canvas. Initiates creation of the canvas
-   * @param {*} applicationHolder This is the element that the pane will live within. Used in Iodide Notebook
+   * @param {*} allPanes This is the element that the pane will live within. Used in Iodide Notebook
    * @param {*} count This is the ID of the pane, helps track how many have been created.
    * @class Pane
    */
-  constructor(applicationHolder, count) {
+  constructor(allPanes, count) {
     // generate the pane div
     // want radio w 3 buttons, range slider, selection form for loading
     let paneDiv = document.createElement("div")
@@ -286,8 +293,8 @@ class Pane {
     this.removeIcon.addEventListener("click",this.removePane.bind(this))
     this.paneDiv.append(this.removeIcon)
     /**  */
-    this.applicationHolder = applicationHolder
-    this.applicationHolder.append(this.paneDiv)
+    this.allPanes = allPanes
+    this.allPanes.append(this.paneDiv)
   }
 
   loadRequestHandler(cb) {
