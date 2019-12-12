@@ -48,6 +48,7 @@ json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/G
     text-align: center;
 }
 %% js
+
 class Application {
   /**
    *Creates an instance of Application. Also creates a panes list to hold each generated pane
@@ -58,11 +59,11 @@ class Application {
   constructor(applicationHolder, jsonData = {}) {
       debugger
     // create the button
-    /**  */
+    /** The list holding all the generated panes, used at export time to collect all aspects of session state to write to json    */
     this.panes = []
-    /**  */
+    /** This is full set of all the geo_json files that specify the shape of the regions represented in the atlas provided as jsonData  */
     this.regionBoundaryData = jsonData
-    /**  */
+    /** This is the web element that the application will live in. Mostly for use in the iodide notebook, but any web element can be provided, and the tool can operation inside of that  */
     this.applicationHolder = applicationHolder
   }
   /**
@@ -96,10 +97,10 @@ class Application {
    */
   async addButton() {
     // fetch the region boundary data
-    /**  */
+    /** This is the holder of all the buttons in the application program  */
     this.btndiv = document.createElement("div")
     this.btndiv.id = "btnholder"
-    /**  */
+    /** this is the add panes button  */
     this.btn = document.createElement("button")
     this.btn.onclick = this.addPane.bind(this)
     this.btn.setAttribute("id", "addbtn")
@@ -107,13 +108,13 @@ class Application {
     this.btndiv.append(this.btn)
     this.applicationHolder.append(this.btndiv)
     // create the export button also 
-    /**  */
+    /** The export button  */
     this.exportBtn = document.createElement("button")
     this.exportBtn.innerHTML = "Export"
     this.exportBtn.addEventListener("click", this.export.bind(this))
     this.applicationHolder.append(this.exportBtn)
     // create the import button
-    /**  */
+    /** the import button  */
     this.importBtn = document.createElement("button")
     this.importBtn.innerHTML = "Import"
     this.importBtn.addEventListener("click", this.import.bind(this))
@@ -254,13 +255,13 @@ class Application {
     // finish pane loading
 
     // create ctrloptions
-    /**  */
+    /** This is a reference to the options for controlling the canvas (known as CtrlOp)   */
     this.ctrlop = new CtrlOp(newPane.paneDiv, newPane)
     // loads the data and such
     await this.ctrlop.init()
 
     // create the canvas
-    /**  */
+    /** The canvas that the slice and fill data is drawn on  */
     this.can = new Canvas(newPane.paneDiv, newPane, 500, 20)
     this.can.init()
     // target the canvas with our events
@@ -283,16 +284,16 @@ class Pane {
     let paneDiv = document.createElement("div")
     paneDiv.className = "pane"
     paneDiv.setAttribute("id", "pane" + count)
-    /**  */
+    /** The div that holds all the panes visible child elements.    */
     this.paneDiv = paneDiv
-    /** */
+    /** The image that allows users to remove a pane if they screw up or something. */
     this.removeIcon = new Image()
     // xicon is a global created at the top of the notebook
     this.removeIcon.src = "https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/x.png"
     this.removeIcon.id = "paneremoveicon"
     this.removeIcon.addEventListener("click",this.removePane.bind(this))
     this.paneDiv.append(this.removeIcon)
-    /**  */
+    /** The div holding all the panes. Necessary for uniform display styling such as flex layouts in column or row order  */
     this.allPanes = allPanes
     this.allPanes.append(this.paneDiv)
   }
@@ -338,18 +339,18 @@ class CtrlOp {
    * @class CtrlOp
    */
   constructor(paneDiv, paneOb) {
-    /**  */
+    /** Reference for the ctrlop back to the pane it lives in. Useful for sharing data with the canvas, and export  */
     this.paneOb = paneOb
     let ctrlDiv = document.createElement("div")
     ctrlDiv.className = "ctrlDiv"
     // add a section to the ctrldiv that clicking and dragging will actually move the entire paneholder
     paneDiv.append(ctrlDiv)
-    /**  */
+    /** The paneDiv that the ctrlDiv will live in  */
     this.paneDiv = paneDiv
-    /**  */
+    /** The div that holds all the child elements of the CtrlOp class   */
     this.ctrlDiv = ctrlDiv
     // this will be set to the canvas element to emit events that the canvas is set to listen for
-    /**  */
+    /** This is the canvas html element. Target for all the dispatched events meant to trigger setups and drawings on the canvas  */
     this.eTarget = undefined
   }
   /**
@@ -359,7 +360,6 @@ class CtrlOp {
    * @memberof CtrlOp
    */
   target(ele) {
-    /**  */
     this.eTarget = ele
   }
 
@@ -536,10 +536,10 @@ class CtrlOp {
     slicesByView.axial.sort(sortfunc)
     slicesByView.sagittal.sort(sortfunc)
     slicesByView.coronal.sort(sortfunc)
-    /**  */
+    /** An object who's keys are the brain views, and values are lists of the slice files that match the paneOb.regionBoundaryData object. Used to figure out which slice's region boundaries are to be drawn on the canvas at any time   */
     this.sliderSlices = slicesByView
     // get the array of values
-    /**  */
+    /** A similar collection to the sliderSlices, but to populate the label next to the slice slider element so users can tell which slice (in mm) they are looking at   */
     this.sliderMeasurements = {}
     this.sliderMeasurements.axial = slicesByView.axial.map(sl => {
       return (sl.match(/(-?\d+\.?\d*?mm)/)[1])
@@ -567,15 +567,15 @@ class CtrlOp {
     label.setAttribute("for", "slicerange")
     this.ctrlDiv.append(range)
     this.ctrlDiv.append(label)
-    /**  */
+    /** The html input element used to select the slice to draw.  */
     this.slider = range
-    /**  */
+    /** The label specifying which mm slice in the brain we are looking at  */
     this.sliderlabel = label
     // makes several attributes helpful for handling slider change
     this.prepRangeData()
     // add the on input event emitter  for when slider moves
     this.slider.oninput = () => {
-      /**  */
+      /** The slider value the user has selected   */
       this.selectedSliceIndex = parseInt(this.slider.value)
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
@@ -605,7 +605,7 @@ class CtrlOp {
     if (this.fillFilter) {
       this.fillFilter.remove()
     }
-    /**  */
+    /** This is the filter allowing to only color fill regions greater than the min value and less than the max. Helpful for ascertaining which areas with similar coloration are actually higher or lower values.  */
     this.fillFilter = new FillColFilter(this.ctrlDiv, this.paneOb.initialColData, this.eTarget, this.paneOb)
     this.fillFilter.init()
     // set them at default values
@@ -613,7 +613,7 @@ class CtrlOp {
     if (this.altFilters) {
       this.altFilters.remove()
     }
-    /**  */
+    /** The alternate column filter. Allows for pairing down which regions are colored based on rules set on   */
     this.altFilters = new AltHolder(this.ctrlDiv, this.paneOb)
     this.altFilters.init()
 
@@ -629,15 +629,15 @@ class AltColumnFilters {
    * @class AltColumnFilters
    */
   constructor(outerHolder, paneOb) {
-    /**  */
+    /** This holder is the AltColumn holder which itself lives in the ctrldiv above the canvas. Elements of the altColumn filter row get placed in here  */
     this.outerHolder = outerHolder
-    /**  */
+    /** The pane reference to store values meant to be share with canvas, or used in export  */
     this.paneOb = paneOb
-    /**  */
+    /** The individual row holder which gets added to the outer holder  */
     this.holder = document.createElement("div")
     this.holder.className = "altFilterRow"
     // used for tooltip and ultimate session export
-    /**  */
+    /** the export info of the alt column, used for populating the tooltips that appear after clicks happen on top of canvas regions  */
     this.expInfo = {}
     //
 
@@ -651,7 +651,7 @@ class AltColumnFilters {
   init() {
     this.outerHolder.append(this.holder)
     // create element that takes away the filter row
-    /**  */
+    /** The button which removes a row of alt filter options  */
     this.removeBtn = document.createElement("button")
     this.removeBtn.innerHTML = "X"
     this.removeBtn.addEventListener("click", this.removeSelf.bind(this))
@@ -660,28 +660,12 @@ class AltColumnFilters {
     this.columnSelector()
   }
   /**
-   *Find unique values of the selected column to populate the categorical value selector. Third item of the filter row
-   *
-   * @memberof AltColumnFilters
-   */
-  makeSelectUnique() {
-    /**  */
-    this.catSelect = document.createElement("select")
-    this.catSelect.id = "val"
-    for (let op of uniqueSet) {
-      let option = document.createElement("option")
-      this.catSelect.append(option)
-      option.value = op
-      option.innerHTML = op
-    }
-  }
-  /**
    *The intial selector specifying which CSV column to use as the altFilter.Triggers operations and value selector creation on change 
    *
    * @memberof AltColumnFilters
    */
   columnSelector() {
-    /**  */
+    /**  The drop down selector for the column of the csv data to use as the alternate column filter   */
     this.altColSelect = document.createElement("select")
     // the column names of the csv
     this.altColSelect.id = "colname"
@@ -717,7 +701,7 @@ class AltColumnFilters {
     this.paneOb.altFiltersState[this.id].colname = this.altColSelect.value
     if (parseFloat(this.paneOb.csvData[this.altColSelect.value][0])) {
       // the value was numeric, t
-      /**  */
+      /** The Operation drop down who's possible options are dependent on the selected csv column featuring numeric or categorical data  */
       this.operation = document.createElement("select")
       this.operation.id = "op"
       let equals = document.createElement("option")
@@ -730,7 +714,7 @@ class AltColumnFilters {
       this.operation.append(notEquals)
       this.holder.append(this.operation)
       // create an input point for value input
-      /**  */
+      /** The value drop down list that is combined with the selected operation to generate a bool mask array from the selected alternate CSV column   */
       this.valueSelector = document.createElement("input")
       this.valueSelector.type = "text"
       this.valueSelector.id = "val"
@@ -741,7 +725,6 @@ class AltColumnFilters {
     } else {
       // remove existing elements too
       // generate the == != select
-      /**  */
       this.operation = document.createElement("select")
       this.operation.id = "op"
       let equals = document.createElement("option")
@@ -756,7 +739,6 @@ class AltColumnFilters {
 
       // make a populated selector with unique options from the column
       this.findUniqueElements()
-      /**  */
       this.valueSelector = document.createElement("select")
       this.valueSelector.id = "val"
       for (let op of this.uniqueSet) {
@@ -785,7 +767,7 @@ class AltColumnFilters {
     this.expInfo["value"] = this.valueSelector.value
     this.paneOb.altFiltersState[this.id].op = this.operation.value
     this.paneOb.altFiltersState[this.id].val = this.valueSelector.value
-    /**  */
+    /** The list of 1's and 0's corresponding to whether the element at a particular index in the alternate column passes the logical comparison to the filter's specific operation and value choices  */
     this.boolMask = this.paneOb.csvData[this.altColSelect.value].map(e => {
       if (this.operation.value == "==") {
         if (e == this.valueSelector.value) {
@@ -823,7 +805,7 @@ class AltColumnFilters {
    * @memberof AltColumnFilters
    */
   findUniqueElements() {
-    /**  */
+    /** The collection of unique values in a categorical column of CSV Data  */
     this.uniqueSet = []
     for (let element of this.paneOb.csvData[this.altColSelect.value]) {
       if (this.uniqueSet.indexOf(element) == -1) {
@@ -858,15 +840,15 @@ class AltHolder {
    */
   constructor(ctrlDiv, paneOb) {
     // button and larger div for the elements to get added in
-    /**  */
+    /** The CtrlOp div holder  */
     this.ctrlDiv = ctrlDiv
-    /**  */
+    /** The pane referenc to store values necessary for export such as altFiltersState */
     this.paneOb = paneOb
-    /**  */
+    /** The button that generates rows of alt filter options  */
     this.createAltRowBtn = document.createElement("button")
     this.createAltRowBtn.innerHTML = "Create Alt Column Filter"
     this.createAltRowBtn.id = "altfilterbutton"
-    /**  */
+    /** The list holding the generated alt filters  */
     this.altfilters = []
   }
   /**
@@ -875,15 +857,20 @@ class AltHolder {
    * @memberof AltHolder
    */
   init() {
-    /**  */
+    /** The holder for the AltHolder's elements and its children's elements as well  */
     this.holder = document.createElement("div")
     this.holder.id = "altcolholder"
     this.createAltRowBtn.onclick = this.addRow.bind(this)
     this.holder.append(this.createAltRowBtn)
     this.ctrlDiv.append(this.holder)
-    /**  */
+    /** the id passed to the altfilter row. Used to uniquely identify each row for export and removal operations  */
     this.idCount = 0
     // attach the altfilters to the paneOb for export
+    /** testing 
+     * @alias altFiltersState
+    * @memberof Pane
+    * @instance
+    */
     this.paneOb.altFiltersState = {}
 
   }
@@ -987,17 +974,17 @@ class FillColFilter {
    * @class FillColFilter
    */
   constructor(ctrlDiv, data, eventTarget, paneOb) {
-    /**  */
+    /** the minimum value for data in the fill color column,   */
     this.min = undefined
-    /**  */
+    /** the max allowed value for the fill color column */
     this.max = undefined
-    /**  */
+    /** the ctrlop div that we should add the div sliders to */
     this.ctrlDiv = ctrlDiv
-    /**  */
+    /** The initial data which will be filtered and stored on the paneOb for the canvas to access */
     this.data = data
-    /**  */
+    /** The canvas html element to dispatch events on */
     this.eTarget = eventTarget
-    /**  */
+    /** The paneOb reference to store data for canvas use and export */
     this.paneOb = paneOb
   }
   //remove the previous filter elements
@@ -1028,27 +1015,27 @@ class FillColFilter {
     // raise hell if the data can't be sorted this way
     this.setbounds(Math.min(...this.data), Math.max(...this.data))
     // makes it easier to have the sliders present correct values even when negatives are involved
-    /**  */
+    /** Interpolator instance to provide values in the fill column range given values 0 to 1 related to slider div placement on page */
     this.interpolator = interpolator()
     // values of v go in which range from 0 to 1
     this.interpolator.setup(0, this.absmin, 1, this.absmax)
 
-    /**  */
+    /** This is the html element for the max fill slider  */
     this.maxel = max
-    /**  */
+    /** This is the html element for the min fill slider  */
     this.minel = min
     // make the draggable elements catch movement events and ensure that the filter method gets called when dragging stops
     this.maxel.element.addEventListener("divmoved", this.filter.bind(this))
     this.minel.element.addEventListener("divmoved", this.filter.bind(this))
     // this si the amount of screen space that the filter div's can move, minus the width of the element
-    /**  */
+    /** This is the static width of the fill slider area, 1/4 of the ctrldiv's width less 30 which is the width of a div slider */
     this.width = (rangeWidth.width / 4) - 30
     // create labels
-    /**  */
+    /** The min slider value, this changes when the div moves */
     this.minlabel = document.createElement("p")
     this.minlabel.id = "minlabel"
     this.minlabel.className = "filterLabel"
-    /**  */
+    /** The max slider value, which changes due to user interaction with the div */
     this.maxlabel = document.createElement("p")
     this.minlabel.id = "maxlabel"
     this.maxlabel.className = "filterLabel"
@@ -1060,14 +1047,13 @@ class FillColFilter {
       let maxleft = parseInt(max.element.style.left)
       if (v > maxleft) {
         min.element.style.left = `${maxleft}px`
-        /**  */
+        /** The minimum value. This is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box */
         this.min = maxleft
         // update min label
         this.minlabel.innerHTML = this.interpolator.calc(maxleft / this.width).toFixed(5)
         return true
       }
       // used at filter time
-      /**  */
       this.min = v
       // update min label and account for the divslider width
       this.minlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
@@ -1077,14 +1063,13 @@ class FillColFilter {
       let minleft = parseInt(min.element.style.left)
       if (v < minleft) {
         max.element.style.left = `${minleft}px`
-        /**  */
+        /**  The maximum value. Again, this is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box  */
         this.max = minleft
         this.maxlabel.innerHTML = this.interpolator.calc(minleft / this.width).toFixed(5)
         return true
       }
       this.maxlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
       // used at filter time
-      /**  */
       this.max = v
       return false
     }
@@ -1137,9 +1122,9 @@ class FillColFilter {
    * @memberof FillColFilter
    */
   setbounds(absmin, absmax) {
-    /**  */
+    /** This is a absolute max of the fill data column that was selected by the user  */
     this.absmax = absmax
-    /**  */
+    /** This is the absolute min of the fill data column selected by the user  */
     this.absmin = absmin
   }
 }
@@ -1154,7 +1139,7 @@ class divMaker {
    */
   constructor(width, holder) {
     let d = document.createElement("div")
-    /**  */
+    /** This is the html element that is styled to appear as a slider for use in the fillColor filters */
     this.element = d
     d.style.height = "30px"
     d.style.width = "30px"
@@ -1174,7 +1159,7 @@ class divMaker {
       } else {
         this.element.style.left = `${left}px`
       }
-      /**  */
+      /** This is a numeric representation of how far from the left side of the parent element's bounding box the element is to be positioned. This value when divided by the total width of the slider's range gives a 0 to 1 value that can be converted into the numeric range of the fill column selected by the user for filtering values above the max and below the min. */
       this.v = parseInt(this.element.style.left)
     }
     let cancelMove = (e) => {
@@ -1212,34 +1197,44 @@ class Canvas {
    * @class Canvas
    */
   constructor(paneDiv, paneOb, size, margin) {
-    /**  */
+    /** The amonut of pixels of space outside the drawing area of brain data */
     this.margin = margin
-    /**  */
+    /** The width and length measure of the canvas size  */
     this.size = size
-    /**  */
+    /** The html canvas element that we draw on.  */
     this.can = document.createElement("canvas")
     // the invisible canvas is used to assist with the mapping of clicks to uniquely colored regions whose pixels can be queried for color strings mapping to region names
     // easy hack to keep performance and accuracy of interactivity on canvas
-    /**  */
+    /** This canvas is used in ascertaining which region a mouse click has occured on. It isn't drawn to the screen, but instead has each region filled with a unique color at draw time, and the pixel value that lies under a mouse click can be used to map directly to the region name that red,green,blue pixel corresponds to in the colToRegMap attribute of the canvas.  */
     this.invisican = document.createElement("canvas")
     this.invisican.id = "invisican"
     // makes resizes not affect xy of canvas
-    /**  */
+    /** The div element that the canvas is placed in */
     this.canvasHolder = document.createElement("div")
     this.canvasHolder.id = "canvasHolder"
-    /**  */
+    /** The holder for all the tooltip html elements  */
     this.infoHolder = document.createElement("div")
     this.infoHolder.className = "infoHolder"
     // other versions of teh data will be around later,
     // get data for boundaries and selected value column
-    /**  */
+    /** The div that the pane object owns which all the children html elements are added to  */
     this.paneDiv = paneDiv
-    /**  */
+    /** The paneOb reference to store data for canvas use and export */
     this.paneOb = paneOb
+    /** This is the dictionary that holds the tooltips created when a region is clicked with the mouse, and the region names of the brain slices are the lookup keys. 
+     * @memberof Pane
+     * @alias rois
+     * @instance
+    */
     this.paneOb.rois = {}
     // setup the text area for note taking
+    /** This is the textarea html element that notes can be put on indicating what was thought to be useful information regarding the slice and filters that were selected. 
+     * @memberof Pane
+     * @instance
+     * @alias ta
+     * 
+     */
     this.paneOb.ta = document.createElement("textarea")
-    //thi
   }
   /**
    *Generate a map of region names to actual numerical values. Store the object on the paneOb as dataForPlot to use in plotting tools.
@@ -1247,7 +1242,7 @@ class Canvas {
    * @memberof Canvas
    */
   makeRegDataMap() {
-    /**  */
+    /** This is the region name to value map that is referenced when fill colors are being selected for a region during draw(). The region names are the keys and the numeric data of the fill column becomes the values */
     this.regNameToValueMap = {}
     // drawregions without fill if nothing selected yet
     if (this.fillData == undefined) {
@@ -1259,6 +1254,7 @@ class Canvas {
         this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
       })
     }
+    /** This attribute enables simple tools to access the filtered data being used for coloring the region so that it may be plotted.*/
     this.paneOb.dataForPlot = this.regNameToValueMap
   }
   /**
@@ -1279,9 +1275,9 @@ class Canvas {
     //create interpolators for drawing
     //map xmin - xmax to 0 to 5000 or whatever width is do the same for y
     // create the regnametoValueMap
-    /**  */
+    /** This is the html canvas element context used for drawing lines and filling shapes on the canvas */
     this.ctx = this.can.getContext("2d")
-    /**  */
+    /** This is the drawing context for the invisible canvas */
     this.invisictx = this.invisican.getContext("2d")
     // calculate the regionSize min and max for all the slices, and allow us to scale the canvas content depending on that in the future
     this.calcRegionSizeGlobal()
@@ -1315,18 +1311,15 @@ class Canvas {
    */
   setupCanvas() {
     // mingle the two filtered datasets 
-    /**  */
+    /** This is a helper attribute that will hold the values that have passed all available filters */
     this.fillData = []
     // if both data filters aren't specified use whole initial range
     if (this.paneOb.filteredFillColData == undefined &&
       this.paneOb.filteredAltColData == undefined) {
-      /**  */
       this.fillData = this.paneOb.initialColData
     } else if (this.paneOb.filteredFillColData == undefined && this.paneOb.filteredAltColData != undefined) {
-      /**  */
       this.fillData = this.paneOb.filteredAltColData
     } else if (this.paneOb.filteredFillColData != undefined && this.paneOb.filteredAltColData == undefined) {
-      /**  */
       this.fillData = this.paneOb.filteredFillColData
     } else {
       // if only the activity is specified
@@ -1349,9 +1342,9 @@ class Canvas {
     }
     // initialize the color setting for the invisican
     let cc = color_collection(this.paneOb.sliceData.features.length)
-    /**  */
+    /** This is the map that has red,green,blue strings as keys to look up region names. an example pair would be "15,22,180":"PL_Op_L" */
     this.colToRegMap = {}
-    /**  */
+    /** This is the inverse of the colToRegMap */
     this.regToColMap = {}
     this.paneOb.sliceData.features.map((f, i) => {
       // this is for the fill on the invisible canvas
@@ -1375,9 +1368,9 @@ class Canvas {
       xinterp.setup(this.regionSizes[0], 0 + this.margin, this.regionSizes[2], this.can.width - this.margin)
       yinterp.setup(this.regionSizes[1], this.can.height * this.canvasRatio - this.margin, this.regionSizes[3], this.margin)// extra 10is the margin split intwo
     }
-    /**  */
+    /** This is the interpolator for converting region coordinate y values to the y axis of the canvas. Don't forget that 0 is the top of the canvas which is why in the setup code the full height minus the margin is mapped to the min value of the region size */
     this.yinterp = yinterp
-    /**  */
+    /** This is the interpolator for converting the x coordinates of a region's boundary to the x dimension of the canvas.  */
     this.xinterp = xinterp
   }
   /**
@@ -1479,9 +1472,9 @@ class Canvas {
         }
       }
     }
-    /**  */
+    /** This is a list of smallest and largest values found in the x,y dimensions within the geojson data provided. This is used to scale the region coordinates to the space of the canvas  */
     this.regionSizes = globals
-    /**  */
+    /** This is a ratio of the heightvs the width of the brain data. Helpful for determining what the maximum value of our y interpolator should be.  */
     this.canvasRatio = globals[3] / globals[2]
   }
 
@@ -1491,24 +1484,22 @@ class Canvas {
    * @memberof Canvas
    */
   calcValueColMinMax() {
-    /**  */
+    /** These values are the min of the entire fillData provided to the canvas. This is used in linearly interpolating the color of the fill for a region if it has data. This is the minimum value */
     this.scanDatamin = 0
-    /**  */
+    /** This is the maximum value of the fillData for the canvas. */
     this.scanDatamax = 0
     for (let row of this.fillData) {
       if (row > this.scanDatamax) {
-        /**  */
         this.scanDatamax = parseFloat(row)
       }
       if (row < this.scanDatamin) {
-        /**  */
         this.scanDatamin = parseFloat(row)
       }
     }
     // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
     let valToColInterp = interpolator()
     valToColInterp.setup(this.scanDatamin, 0, this.scanDatamax, 1)
-    /**  */
+    /**  This is the fill value to color interpolator. It converts from the min to max range a 0 to 1 value that we can pass to the color interpolator to return r,g,b values between to specific colors. */
     this.valToColInterp = valToColInterp
     // calculate the min and maxes of the scan data for each scan
   }
@@ -1676,6 +1667,8 @@ let LerpCol = (c1, c2, t) => {
   return `rgb(${red},${green},${blue})`
 
 }
+
+
 
 
 let appHolder = document.querySelector("#applicationHolder")
