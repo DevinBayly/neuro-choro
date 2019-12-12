@@ -1,7 +1,8 @@
 # Neuroimaging Choropleth Tool
 
 
-## Introduction [source]
+## Introduction
+[source citation]
 
 Choropleths are simple maps that display regional changes as color (e.g., a US map showing states that lean Democrat vs Republican). Here is an example of a brain choropleth.
 
