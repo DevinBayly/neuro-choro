@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Class: Application</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Class: Application</h1>
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        <h2><span class="attribs"><span class="type-signature"></span></span>
+            <span class="ancestors"><a href="Application.html">Application</a>.</span>Application<span class="signature">(applicationHolder, jsonData<span class="signature-attributes">opt</span>, csvText<span class="signature-attributes">opt</span>, importData<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+
+    
+
+    
+    <h4 class="name" id="Application"><span class="type-signature"></span>new Application<span class="signature">(applicationHolder, jsonData<span class="signature-attributes">opt</span>, csvText<span class="signature-attributes">opt</span>, importData<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Creates an instance of Application. Also creates a panes list to hold each generated pane
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>applicationHolder</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">This is the page div that the elements should live within. Useful for Iodide where the document.body.append causes issues within the IDE side of it.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>jsonData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    {}
+                
+                </td>
+            
+
+            <td class="description last">this is the data that specifies the region boundaries of the json data. it is shared between all panes</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>csvText</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    ""
+                
+                </td>
+            
+
+            <td class="description last">This is the selected csv data to use for fill values within the regions on the canvas</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>importData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    {}
+                
+                </td>
+            
+
+            <td class="description last">this is the previous session's json file, if left blank the import button wont do anything</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="index.js.html">index.js</a>, <a href="index.js.html#line15">line 15</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AltColumnFilters.html">AltColumnFilters</a></li><li><a href="AltColumnFilters.AltColumnFilters.html">AltColumnFilters</a></li><li><a href="AltHolder.html">AltHolder</a></li><li><a href="AltHolder.AltHolder.html">AltHolder</a></li><li><a href="Application.html">Application</a></li><li><a href="Application.Application.html">Application</a></li><li><a href="Canvas.html">Canvas</a></li><li><a href="Canvas.Canvas.html">Canvas</a></li><li><a href="CtrlOp.html">CtrlOp</a></li><li><a href="CtrlOp.CtrlOp.html">CtrlOp</a></li><li><a href="divMaker.html">divMaker</a></li><li><a href="divMaker.divMaker.html">divMaker</a></li><li><a href="FillColFilter.html">FillColFilter</a></li><li><a href="FillColFilter.FillColFilter.html">FillColFilter</a></li><li><a href="Pane.html">Pane</a></li><li><a href="Pane.Pane.html">Pane</a></li></ul><h3>Global</h3><ul><li><a href="global.html#color_collection">color_collection</a></li><li><a href="global.html#interpolator">interpolator</a></li><li><a href="global.html#LerpCol">LerpCol</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Mon Dec 09 2019 13:17:20 GMT-0700 (Mountain Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
