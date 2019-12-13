@@ -1,55 +1,32 @@
-%% md
-# Neuro-choropleth 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: doc_test.js</title>
 
-This is a tool to efficiently perform initial analyses of neuro imaging multi subject scans. 
-%% fetch
-json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/GeoJson_Brains/totalfix.json
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: doc_test.js</h1>
+
+    
 
 
 
-%% md
-<div id="applicationHolder"></div>
-%% css
-
-#allpanes {
-  display:flex;
-}
-
-
-#radcontaineraxial::before {
-  content:"brainviews: ";
-  display:block;
-  text-decoration:underline;
-}
-
-#radcontainercoronal::after {
-  content:"Region Color Column";
-  display:block;
-  text-decoration:underline;
-}
-
-.pane {
-    border: 1px 
-    black solid;
-    border-radius: 20px;
-    padding: 10px;
-}
-#regionname {
-    background:  #dbdbba;
-}
-.infoHolder {
-  display:flex;
-}
-.tooltipholder {
-    width:50%;
-    font-size: 12px;
-    border: 1px black solid;
-    border-radius: 20px;
-    text-align: center;
-}
-%% js
-
-class Application {
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>class Application {
   /**
    *Creates an instance of Application. Also creates a panes list to hold each generated pane
    * @param {*} applicationHolder This is the page div that the elements should live within. Useful for Iodide where the document.body.append causes issues within the IDE side of it.
@@ -57,6 +34,7 @@ class Application {
    * @class Application
    */
   constructor(applicationHolder, jsonData = {}) {
+      debugger
     // create the button
     /** The list holding all the generated panes, used at export time to collect all aspects of session state to write to json    */
     this.panes = []
@@ -70,7 +48,7 @@ class Application {
    * @param {*} id this is the tagid of the pane that should get removed
    */
   removePane(id) {
-    for (let ind = 0;ind < this.panes.length;ind++) {
+    for (let ind = 0;ind &lt; this.panes.length;ind++) {
       let pane = this.panes[ind]
       if (pane.paneDiv.id == id) {
         // splice out the specific pane
@@ -85,7 +63,6 @@ class Application {
    */
   runApp() {
     this.addButton()
-    this.btn.click()
     this.allPanes = document.createElement("div")
     this.allPanes.id = "allpanes"
     this.applicationHolder.append(this.allPanes)
@@ -110,13 +87,13 @@ class Application {
     // create the export button also 
     /** The export button  */
     this.exportBtn = document.createElement("button")
-    this.exportBtn.innerHTML = "Export Session"
+    this.exportBtn.innerHTML = "Export"
     this.exportBtn.addEventListener("click", this.export.bind(this))
     this.applicationHolder.append(this.exportBtn)
     // create the import button
     /** the import button  */
     this.importBtn = document.createElement("button")
-    this.importBtn.innerHTML = "Import Session"
+    this.importBtn.innerHTML = "Import"
     this.importBtn.addEventListener("click", this.import.bind(this))
     this.applicationHolder.append(this.importBtn)
   }
@@ -154,6 +131,7 @@ class Application {
       // set the csvData from the pane to the paneObcsvText
       activePane.csvText = pane.csvText
       // find way to make it to createSelector
+      debugger
       this.ctrlop.csvDataReader()
       this.ctrlop.createSelector()
       // set the fillCol to the previous 
@@ -244,11 +222,7 @@ class Application {
    * @memberof Application
    */
   async addPane() {
-    // create a panes holder to allow for flex only on panes
-    let panesHolder = document.createElement("div")
-    panesHolder.id = "allpanes"
-    this.applicationHolder.append(panesHolder)
-    let newPane = new Pane(panesHolder, this.panes.length)
+    let newPane = new Pane(this.allPanes, this.panes.length)
     // pass reference to pane, to be used by ctrlOp and Canvas
     newPane.regionBoundaryData = this.regionBoundaryData
     // set the application removal function accessible in the newPane
@@ -270,9 +244,6 @@ class Application {
     // target the canvas with our events
     this.ctrlop.target(this.can.can)
 
-    // force draw the first slider value in frame
-    this.ctrlop.slider.dispatchEvent(new Event("input"))
-
     this.panes.push(newPane)
   }
 }
@@ -280,11 +251,11 @@ class Application {
 class Pane {
   /**
    *Creates an instance of Pane. Initiates construction of the ctrl op object for the pane all the buttons and stuff that have control over the canvas. Initiates creation of the canvas
-   * @param {*} panesHolder This is the element that the pane will live within. Used in Iodide Notebook
+   * @param {*} allPanes This is the element that the pane will live within. Used in Iodide Notebook
    * @param {*} count This is the ID of the pane, helps track how many have been created.
    * @class Pane
    */
-  constructor(panesHolder, count) {
+  constructor(allPanes, count) {
     // generate the pane div
     // want radio w 3 buttons, range slider, selection form for loading
     let paneDiv = document.createElement("div")
@@ -299,9 +270,9 @@ class Pane {
     this.removeIcon.id = "paneremoveicon"
     this.removeIcon.addEventListener("click",this.removePane.bind(this))
     this.paneDiv.append(this.removeIcon)
-    /**  */
-    this.panesHolder = panesHolder
-    this.panesHolder.append(this.paneDiv)
+    /** The div holding all the panes. Necessary for uniform display styling such as flex layouts in column or row order  */
+    this.allPanes = allPanes
+    this.allPanes.append(this.paneDiv)
   }
 
   loadRequestHandler(cb) {
@@ -394,10 +365,8 @@ class CtrlOp {
     // create the brain slice slider
     this.createSlider()
 
-    // set defaults
     // ensure that the slider only permits sagittal slice count
     this.paneOb.paneDiv.querySelector("#radiosagittal").click()
-
   }
   /**
    *This function creates a button that allows loading of a CSV data file. It also adds the result to the paneOb.
@@ -440,9 +409,9 @@ class CtrlOp {
     })
     // read through the rest of the lines and add them to the data
     // although if this were running off a server, we could convert it right then, but then we have hippa concerns? ask dianne
-    for (let iLine = 1; iLine < lines.length; iLine++) {
+    for (let iLine = 1; iLine &lt; lines.length; iLine++) {
       let entries = lines[iLine].split(",")
-      for (let i = 0; i < entries.length; i++) {
+      for (let i = 0; i &lt; entries.length; i++) {
         this.paneOb.csvData[headers[i].toLowerCase()].push(entries[i])
       }
     }
@@ -495,8 +464,6 @@ class CtrlOp {
     }
     // this is the selection element that is populated by the column names in the csv
 
-    let fillColDiv = document.createElement("div")
-    fillColDiv.id = "fillcoldiv"
     let valueColumnSelect = document.createElement("select")
     valueColumnSelect.id = "fillCol"
     for (let key of Object.keys(this.paneOb.csvData)) {
@@ -505,8 +472,7 @@ class CtrlOp {
       option.innerHTML = key
       valueColumnSelect.append(option)
     }
-    fillColDiv.append(valueColumnSelect)
-    this.ctrlDiv.append(fillColDiv)
+    this.ctrlDiv.append(valueColumnSelect)
     valueColumnSelect.onchange = () => {
       // make access to the selector possible
 
@@ -590,9 +556,6 @@ class CtrlOp {
    * @memberof CtrlOp
    */
   createSlider() {
-    // make a slider div
-    let sliderDiv = document.createElement("div")
-    sliderDiv.id = "sliderdiv"
     //initiate the slider
     let range = document.createElement("input")
     range.id = "rangeslider"
@@ -609,9 +572,6 @@ class CtrlOp {
     this.sliderlabel = label
     // makes several attributes helpful for handling slider change
     this.prepRangeData()
-    // draw a default slice
-    this.slider.value = Math.round(this.sliderSlices.sagittal.length/2)
-
     // add the on input event emitter  for when slider moves
     this.slider.oninput = () => {
       /** The slider value the user has selected   */
@@ -711,10 +671,9 @@ class AltColumnFilters {
   init() {
     this.outerHolder.append(this.holder)
     // create element that takes away the filter row
-    /**  */
-    this.removeBtn = new Image()
-    this.removeBtn.src = "https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/x.png"
-
+    /** The button which removes a row of alt filter options  */
+    this.removeBtn = document.createElement("button")
+    this.removeBtn.innerHTML = "X"
     this.removeBtn.addEventListener("click", this.removeSelf.bind(this))
     this.holder.append(this.removeBtn)
     // make the first select element of the csv columns
@@ -745,7 +704,7 @@ class AltColumnFilters {
 
   }
   /**
-   *Handles creation of operation and value selector creation. Interprets the selected CSV column as categorical or numeric and provides the appropriate operation and value selector options. < or > for numeric. == or != for categorical. Also triggers initial creation of bool mask array created from iterating over the specified alternate column and comparing each element to the chosen operation and value. the boolmask 
+   *Handles creation of operation and value selector creation. Interprets the selected CSV column as categorical or numeric and provides the appropriate operation and value selector options. &lt; or > for numeric. == or != for categorical. Also triggers initial creation of bool mask array created from iterating over the specified alternate column and comparing each element to the chosen operation and value. the boolmask 
    *
    * @memberof AltColumnFilters
    */
@@ -766,8 +725,8 @@ class AltColumnFilters {
       this.operation = document.createElement("select")
       this.operation.id = "op"
       let equals = document.createElement("option")
-      equals.innerHTML = "<"
-      equals.value = "<"
+      equals.innerHTML = "&lt;"
+      equals.value = "&lt;"
       let notEquals = document.createElement("option")
       notEquals.innerHTML = ">"
       notEquals.value = ">"
@@ -848,8 +807,8 @@ class AltColumnFilters {
         }
         return 0
       }
-      if (this.operation.value == "<") {
-        if (e < parseFloat(this.valueSelector.value)) {
+      if (this.operation.value == "&lt;") {
+        if (e &lt; parseFloat(this.valueSelector.value)) {
           return 1
         }
         return 0
@@ -1008,7 +967,7 @@ class AltHolder {
    */
   removeFromList(ele) {
     // go through the list and find the one that has the same values for the filtering elements
-    // columnselector && operation && valueSelector
+    // columnselector &amp;&amp; operation &amp;&amp; valueSelector
     let index = 0
     for (let filter of this.altfilters) {
       if (ele.id == filter.id) {
@@ -1134,7 +1093,7 @@ class FillColFilter {
     }
     max.additionalLimit = (v) => {
       let minleft = parseInt(min.element.style.left)
-      if (v < minleft) {
+      if (v &lt; minleft) {
         max.element.style.left = `${minleft}px`
         /**  The maximum value. Again, this is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box  */
         this.max = minleft
@@ -1200,7 +1159,7 @@ class FillColFilter {
      * @instance
     */
     this.paneOb.filteredFillColData = this.data.map(e => {
-      if (e >= fillmin && e <= fillmax) {
+      if (e >= fillmin &amp;&amp; e &lt;= fillmax) {
         return e
       }
       return NaN
@@ -1247,7 +1206,7 @@ class divMaker {
       if (left > width - 30) { // because the size of the div at the moment is 30
         left = width - 30
       }
-      if (left < 0) {
+      if (left &lt; 0) {
         left = 0
       }
       if (this.additionalLimit(left)) {
@@ -1414,17 +1373,17 @@ class Canvas {
     /** This is a helper attribute that will hold the values that have passed all available filters */
     this.fillData = []
     // if both data filters aren't specified use whole initial range
-    if (this.paneOb.filteredFillColData == undefined &&
+    if (this.paneOb.filteredFillColData == undefined &amp;&amp;
       this.paneOb.filteredAltColData == undefined) {
       this.fillData = this.paneOb.initialColData
-    } else if (this.paneOb.filteredFillColData == undefined && this.paneOb.filteredAltColData != undefined) {
+    } else if (this.paneOb.filteredFillColData == undefined &amp;&amp; this.paneOb.filteredAltColData != undefined) {
       this.fillData = this.paneOb.filteredAltColData
-    } else if (this.paneOb.filteredFillColData != undefined && this.paneOb.filteredAltColData == undefined) {
+    } else if (this.paneOb.filteredFillColData != undefined &amp;&amp; this.paneOb.filteredAltColData == undefined) {
       this.fillData = this.paneOb.filteredFillColData
     } else {
       // if only the activity is specified
       // if both filters are around
-      for (let i = 0; i < this.paneOb.initialColData.length; i++) {
+      for (let i = 0; i &lt; this.paneOb.initialColData.length; i++) {
         // if the two different filters have non NAN at that index add it to fill
 
         if (isNaN(this.paneOb.filteredAltColData[i]) || isNaN(this.paneOb.filteredFillColData[i])) {
@@ -1520,18 +1479,18 @@ class Canvas {
         delete this.paneOb.rois[regionName]
       } else {
         this.paneOb.rois[regionName] = `
-            <h3>Selected Region
-              <p class="tooltip-child" id="regionname">
+            &lt;h3>Selected Region
+              &lt;p class="tooltip-child" id="regionname">
                     ${ regionName}
-              </p>
-              <p class="tooltip-child">
-            <p>value: ${this.regNameToValueMap[regionName].toFixed(5)}
-            </p><p>view: ${this.paneOb.brainView}
-            </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
-            </p><p>slice: ${this.paneOb.sliceMeasure}
+              &lt;/p>
+              &lt;p class="tooltip-child">
+            &lt;p>value: ${this.regNameToValueMap[regionName].toFixed(5)}
+            &lt;/p>&lt;p>view: ${this.paneOb.brainView}
+            &lt;/p>&lt;p>fillColumnFilter: ${this.paneOb.valFilterMin} &lt;= value &lt;= ${this.paneOb.valFilterMax} 
+            &lt;/p>&lt;p>slice: ${this.paneOb.sliceMeasure}
 
-              </p><p>altfilterinfo:${this.paneOb.altFilterInfo}</p>
-            </h3>
+              &lt;/p>&lt;p>altfilterinfo:${this.paneOb.altFilterInfo}&lt;/p>
+            &lt;/h3>
             `
       }
       // do a redraw
@@ -1556,10 +1515,10 @@ class Canvas {
         // likely nota  loop because coordinates is a single element array
         for (let line of feature.geometry.coordinates) {
           for (let pt of line) {
-            if (pt[0] < globals[0]) {
+            if (pt[0] &lt; globals[0]) {
               globals[0] = pt[0]
             }
-            if (pt[1] < globals[1]) {
+            if (pt[1] &lt; globals[1]) {
               globals[1] = pt[1]
             }
             if (pt[0] > globals[2]) {
@@ -1592,7 +1551,7 @@ class Canvas {
       if (row > this.scanDatamax) {
         this.scanDatamax = parseFloat(row)
       }
-      if (row < this.scanDatamin) {
+      if (row &lt; this.scanDatamin) {
         this.scanDatamin = parseFloat(row)
       }
     }
@@ -1647,7 +1606,7 @@ class Canvas {
         let y = this.yinterp.calc(first[1])
         this.ctx.moveTo(x, y)
         this.invisictx.moveTo(x, y)
-        for (let i = 1; i < linedata.points.length; i++) {
+        for (let i = 1; i &lt; linedata.points.length; i++) {
           let pt = linedata.points[i]
           let x = this.xinterp.calc(pt[0])
           let y = this.yinterp.calc(pt[1])
@@ -1680,7 +1639,7 @@ class Canvas {
             let scanData = this.regNameToValueMap[linedata.region]
             let t = this.valToColInterp.calc(scanData)
             let lerpc
-            if (scanData < 0) {
+            if (scanData &lt; 0) {
               // use the blue to gray instead of gray to red
               lerpc = LerpCol(blue, gray, t)
             } else {
@@ -1712,9 +1671,9 @@ let color_collection = (rnum) => {
   let colordim = Math.ceil(Math.pow(rnum, 1 / 3))
   ob.array = []
   // nesting 3 deep, but each should be short
-  for (let r = 0; r < colordim; r++) {
-    for (let g = 0; g < colordim; g++) {
-      for (let b = 0; b < colordim; b++) {
+  for (let r = 0; r &lt; colordim; r++) {
+    for (let g = 0; g &lt; colordim; g++) {
+      for (let b = 0; b &lt; colordim; b++) {
         let base = 255 / colordim // the base is permuted by each of the rgb loop variables
         // must round because the canvas sampling by pixel doesn't return floats
         ob.array.push([Math.round(base * r), Math.round(base * g), Math.round(base * b)])
@@ -1767,41 +1726,26 @@ let LerpCol = (c1, c2, t) => {
   return `rgb(${red},${green},${blue})`
 
 }
+</code></pre>
+        </article>
+    </section>
 
 
 
 
-let appHolder = document.querySelector("#applicationHolder")
-var app = new Application(appHolder, atlas, csvData, sessionData)
+</div>
 
-// provide loaders for session and csv data sources
-var csvData, sessionData
-let Handler = () => {
-}
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AltColumnFilters.html">AltColumnFilters</a></li><li><a href="AltHolder.html">AltHolder</a></li><li><a href="Application.html">Application</a></li><li><a href="Canvas.html">Canvas</a></li><li><a href="CtrlOp.html">CtrlOp</a></li><li><a href="divMaker.html">divMaker</a></li><li><a href="FillColFilter.html">FillColFilter</a></li><li><a href="Pane.html">Pane</a></li></ul><h3>Global</h3><ul><li><a href="global.html#color_collection">color_collection</a></li><li><a href="global.html#interpolator">interpolator</a></li><li><a href="global.html#LerpCol">LerpCol</a></li></ul>
+</nav>
 
+<br class="clear">
 
-app.runApp()
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Thu Dec 12 2019 15:36:28 GMT-0700 (Mountain Standard Time)
+</footer>
 
-%% md
-
-## Graphs using plotly from the data shown in the imaging panes.
-
-
-%% fetch
-js: https://cdn.plot.ly/plotly-latest.min.js
-
-%% md
-
-<div id="plotholder"></div>
-%% js
-
-let x = Object.keys(app.panes[0].dataForPlot)
-
-let y = Object.values(app.panes[0].dataForPlot)
-
-
-let plot = document.querySelector("#plotholder")
-Plotly.plot(plot,[{
-  x,y,
-  type:"bar"
-}])
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
