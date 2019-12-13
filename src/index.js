@@ -10,21 +10,48 @@ json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/G
 %% md
 <div id="applicationHolder"></div>
 %% css
+#backline {
+  height: 10px;
+  margin: 0px auto;
+  background: rgba(80,80,80);
+  width: 90%;
+  position: relative;
+  top: 65%;
+}
+#labelholder {
 
+    height: 30px;
+    margin: 0px 0px 10px 0px;
+    width: 25%;
+    display: flex;
+
+}
 #allpanes {
   display:flex;
 }
 
+div.fillFilterDiv {
+    width: 25%;
+    height:30px;
+    margin: 0px 0px 10px 0px;
+    
+}
+#sliderdiv::before {
+  content:"Slice Selector";
+  text-decoration:underline;
+}
 
 #radcontaineraxial::before {
   content:"brainviews: ";
   display:block;
   text-decoration:underline;
 }
-
-#radcontainercoronal::after {
+.altFilterRow img {
+  width:20px;
+  vertical-align:middle;
+}
+#fillcoldiv::before {
   content:"Region Color Column";
-  display:block;
   text-decoration:underline;
 }
 
@@ -601,8 +628,9 @@ class CtrlOp {
     range.name = "slicerange"
     range.type = "range"
     label.setAttribute("for", "slicerange")
-    this.ctrlDiv.append(range)
-    this.ctrlDiv.append(label)
+    sliderDiv.append(range)
+    sliderDiv.append(label)
+    this.ctrlDiv.append(sliderDiv)
     /** The html input element used to select the slice to draw.  */
     this.slider = range
     /** The label specifying which mm slice in the brain we are looking at  */
@@ -1067,8 +1095,10 @@ class FillColFilter {
    * @memberof FillColFilter
    */
   remove() {
-    this.minlabel.remove()
-    this.maxlabel.remove()
+    // remove the para, and filterdiv
+    this.para.remove()
+    this.filterDiv.remove()
+    this.labelholder.remove()
     this.maxel.element.remove()
     this.minel.element.remove()
   }
@@ -1078,10 +1108,26 @@ class FillColFilter {
    * @memberof FillColFilter
    */
   init() {
+    // make a paragraph element that has the title of the fill col filter
+    let para = document.createElement("p")
+    para.id = "colfilterTitle"
+    para.innerHTML = "Fill Color Filter"
+    this.para = para
+    this.ctrlDiv.append(para)
     // make a range slider that updates the self filter function which is called later on activity data
     let rangeWidth = this.ctrlDiv.getBoundingClientRect()
-    let min = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
-    let max = new divMaker(rangeWidth.width / 4, this.ctrlDiv)
+    // the holder for the min and max elements
+    let filterDiv = document.createElement("div")
+    filterDiv.className = "fillFilterDiv"
+    this.filterDiv = filterDiv
+    // add the background part of the slider
+    let backline = document.createElement("div")
+    backline.id = "backline"
+    this.backline = backline
+    filterDiv.append(backline)
+    this.ctrlDiv.append(filterDiv)
+    let min = new divMaker(rangeWidth.width / 4, filterDiv)
+    let max = new divMaker(rangeWidth.width / 4, filterDiv)
 
 
     // establish the absmin and absmax of the column data
@@ -1114,6 +1160,7 @@ class FillColFilter {
     this.maxlabel.className = "filterLabel"
     let labelholder = document.createElement("div")
     labelholder.id = "labelholder"
+    this.labelholder = labelholder
     // prevent sliders from going over each other
     min.additionalLimit = (v) => {
       // stay below the max point
@@ -1147,8 +1194,8 @@ class FillColFilter {
       return false
     }
     labelholder.append(this.minlabel, this.maxlabel)
-    this.ctrlDiv.append(min.element)
-    this.ctrlDiv.append(max.element)
+    filterDiv.append(min.element)
+    filterDiv.append(max.element)
     this.ctrlDiv.append(labelholder)
     // once placed, set this to keep in correct spot, make them sit on same line
     max.element.style.top = `-30px` // overlap the element with the other
@@ -1273,7 +1320,8 @@ class divMaker {
       document.addEventListener("mouseup", cancelMove)
     }
     d.addEventListener("mousedown", click)
-    d.style.background = "#00000052"
+    d.style.background = "rgb(157,157,157)"
+    d.style["border-radius"]="15px"
   }
   // this function is replaced in the instances of the object, class inheritance case
   additionalLimit(v) {
