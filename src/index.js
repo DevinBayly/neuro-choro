@@ -1406,7 +1406,37 @@ class Canvas {
       })
     } else {
       this.paneOb.csvData["region"].map((e, i) => {
-        this.regNameToValueMap[e.replace(/\s/, "")] = this.fillData[i]
+        let name = e.replace(/\s/, "")
+        // help determine if there's multiple rows with this region's data
+        if (this.regNameToValueMap[name]) {
+          // reset the region rois for the multiples
+          if (this.paneOb.rois[name]) {
+            if (/[\s\S]Multiple/.exec(this.paneOb.rois[name])) {
+              delete this.paneOb.rois[name]
+            }
+          }
+          // prev value mult by the prev count + new div count +1 == rolling ave
+          let prev = this.regNameToValueMap[name]
+          if (!isNaN(prev.value) && !isNaN(this.fillData[i])) {
+          this.regNameToValueMap[name] = {value:(prev.value*prev.count + this.fillData[i])/(prev.count +1),count:prev.count+1}
+          // make a note that there is a row with multiple entries in the current slice
+          this.paneOb.rois[name] = `
+            <h3>Selected Region
+              <p class="tooltip-child" id="regionname">
+                    ${ name}
+              </p>
+              <p class="tooltip-child">
+              <p>Multiple row entries for region</p>
+              <p>Utilize Alt Column Filter to view separately</p>
+            <p>average value: ${this.regNameToValueMap[name].value.toFixed(5)}
+            </h3>
+            `
+          }
+        } else {
+          if (!isNaN(this.fillData[i])) {
+            this.regNameToValueMap[name] = {value:this.fillData[i],count:1}
+          }
+        }
       })
     }
     /**This attribute enables simple tools to access the filtered data being used for coloring the region so that it may be plotted
@@ -1414,7 +1444,9 @@ class Canvas {
      * @memberof Pane
      * @instance
     */
-    this.paneOb.dataForPlot = this.regNameToValueMap
+    this.paneOb.dataForPlot = Object.entries(this.regNameToValueMap).reduce((prev,[k,v])=> {
+      prev[k] = v.value
+    },{})
   }
   /**
    *The initialization of the canvas. Add elements like the canvas (invisible one too), textarea, and infoholders to the canvasHolder field on the class. Create listeners for events that trigger setup and draw functions to execute.
@@ -1584,7 +1616,7 @@ class Canvas {
                     ${ regionName}
               </p>
               <p class="tooltip-child">
-            <p>value: ${this.regNameToValueMap[regionName].toFixed(5)}
+            <p>value: ${this.regNameToValueMap[regionName].value.toFixed(5)}
             </p><p>view: ${this.paneOb.brainView}
             </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
             </p><p>slice: ${this.paneOb.sliceMeasure}
@@ -1734,7 +1766,7 @@ class Canvas {
         // these aren't defined yet
         if (this.regNameToValueMap != undefined) {
           if (this.regNameToValueMap[linedata.region]) {
-            let scanData = this.regNameToValueMap[linedata.region]
+            let scanData = this.regNameToValueMap[linedata.region].value
             let lerpc
             if (scanData < 0) {
               // use the blue to gray instead of gray to red
@@ -1765,7 +1797,7 @@ class Canvas {
           }
           let gradientWidth=10
           this.ctx.fillStyle = gradient
-          let startx = this.can.width-this.margin*2 -gradientWidth
+          let startx = this.can.width-this.margin -gradientWidth
           let endx = this.can.width-this.margin*2
           this.ctx.fillRect(startx,0,endx,this.can.height/4)
           // add numeric values to the gradient
