@@ -11,7 +11,7 @@ json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/G
 <div id="applicationHolder"></div>
 %% css
 #applicationHolder, div {
-  max-width:none;
+  max-width:none !important;
 }
 .infoholder{
   display:flex;
@@ -97,6 +97,8 @@ class Application {
    * @class Application
    */
   constructor(applicationHolder, jsonData = {}) {
+    // important for traces in iodide
+    console.log("tracing")
     // create the button
     /** The list holding all the generated panes, used at export time to collect all aspects of session state to write to json    */
     this.panes = []
@@ -1675,14 +1677,10 @@ class Canvas {
       this.infoHolder.removeChild(this.infoHolder.firstChild)
     }
     let red = {
-      r: 255,
-      g: 0,
-      b: 0,
+      r: 227, g: 74, b: 51
     }
     let gray = {
-      r: 128,
-      g: 128,
-      b: 128
+      r: 254, g: 232, b: 200
     }
     let blue = {
       r: 0,
@@ -1747,6 +1745,23 @@ class Canvas {
             this.ctx.fill()
             // query the region to color map
           } 
+          // setup a legend in the corner
+          let gradient = this.ctx.createLinearGradient(0,0,0,this.can.height/4)
+          gradient.addColorStop(1,`rgb(${gray.r},${gray.g},${gray.b})`)
+          gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+          let gradientWidth=10
+          this.ctx.fillStyle = gradient
+          let startx = this.can.width-this.margin*2 -gradientWidth
+          let endx = this.can.width-this.margin*2
+          this.ctx.fillRect(startx,0,endx,this.can.height/4)
+          // add numeric values to the gradient
+          // measure the text so it sits right next to the gradient
+          let minmeasure = this.ctx.measureText(this.scanDatamin).width
+          let maxmeasure = this.ctx.measureText(this.scanDatamax).width
+          this.ctx.fillStyle = "black"
+          // the -5 is a spacer for the text next to the gradient bar
+          this.ctx.fillText(this.scanDatamin,startx- minmeasure - 5,this.can.height/4)
+          this.ctx.fillText(this.scanDatamax,startx- maxmeasure - 5,10)
         }
         this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
         this.invisictx.fill()
