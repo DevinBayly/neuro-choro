@@ -1649,17 +1649,19 @@ class Canvas {
     this.scanDatamax = 0
     for (let row of this.fillData) {
       if (row > this.scanDatamax) {
-        this.scanDatamax = parseFloat(row)
+        this.scanDatamax = parseFloat(row).toFixed(4)
       }
       if (row < this.scanDatamin) {
-        this.scanDatamin = parseFloat(row)
+        this.scanDatamin = parseFloat(row).toFixed(4)
       }
     }
     // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
-    let valToColInterp = interpolator()
-    valToColInterp.setup(this.scanDatamin, 0, this.scanDatamax, 1)
-    /**  This is the fill value to color interpolator. It converts from the min to max range a 0 to 1 value that we can pass to the color interpolator to return r,g,b values between to specific colors. */
-    this.valToColInterp = valToColInterp
+    let negativeCol = interpolator()
+    negativeCol.setup(this.scanDatamin, 0, 0, 1)
+    let positiveCol = interpolator()
+    positiveCol.setup(0, 0, this.scanDatamax, 1)
+    /** color interpolators for fill */
+    this.colInterpolatorPair = {neg:negativeCol,pos:positiveCol}  
     // calculate the min and maxes of the scan data for each scan
   }
 
@@ -1733,12 +1735,13 @@ class Canvas {
         if (this.regNameToValueMap != undefined) {
           if (this.regNameToValueMap[linedata.region]) {
             let scanData = this.regNameToValueMap[linedata.region]
-            let t = this.valToColInterp.calc(scanData)
             let lerpc
             if (scanData < 0) {
               // use the blue to gray instead of gray to red
+              let t = this.colInterpolatorPair.neg.calc(scanData)
               lerpc = LerpCol(blue, gray, t)
             } else {
+              let t = this.colInterpolatorPair.pos.calc(scanData)
               lerpc = LerpCol(gray, red, t)
             }
             this.ctx.fillStyle = lerpc
