@@ -197,6 +197,7 @@ class Application {
       activePane.csvText = pane.csvText
       // find way to make it to createSelector
       this.ctrlop.csvDataReader()
+      activePane.paneDiv.querySelector("#fillCol")
       this.ctrlop.createSelector()
       // set the fillCol to the previous 
       let fillSelector = activePane.paneDiv.querySelector("#fillCol")
@@ -251,6 +252,9 @@ class Application {
       if (pane.ta) {
         activePane.ta.value = pane.ta
       }
+      // set the csvname field
+      activePane.paneDiv.querySelector("#csvfilename").innerHTML = pane.csvFilename
+
     }
   }
   /**
@@ -345,6 +349,10 @@ class Pane {
   loadRequestHandler(cb) {
 
     let readFile = (e) => {
+      // make the name show in the pane of the csv you loaded
+      this.csvFilename = e.target.files[0].name
+      this.paneDiv.querySelector("#csvfilename").innerHTML = this.csvFilename
+    
       fetch(URL.createObjectURL(e.target.files[0]))
         .then(res => {
             return res.text()
@@ -416,10 +424,10 @@ class CtrlOp {
   async init() {
     // setup the csvLoader button
     this.csvLoader()
-    // setup the radio buttons
     this.mkradio("axial")
     this.mkradio("sagittal")
     this.mkradio("coronal")
+    // setup the radio buttons
     // selected is the radio button we have selected
     /** The view that has been selected to view the slices of the brain from. Stored on pane for export and import of sessions.
      * @alias brainView
@@ -455,6 +463,25 @@ class CtrlOp {
     loadButton.addEventListener("click", loadingCall)
     loadButton.innerHTML = "Upload CSV"
     this.ctrlDiv.append(loadButton)
+    // make an area for the file naem to go
+    let csvFileName = document.createElement("p")
+    csvFileName.id = "csvfilename"
+    this.ctrlDiv.append(csvFileName)
+
+    let fillColDiv = document.createElement("div")
+    fillColDiv.id = "fillcoldiv"
+    /** create a constant placeholder for the fillcol selector*/ 
+    this.fillColDiv = fillColDiv
+    this.ctrlDiv.append(this.fillColDiv)
+    // put in empty selector first
+    let valueColumnSelect = document.createElement("select")
+    valueColumnSelect.id = "fillCol"
+    let uploadSuggest = document.createElement("option")
+    uploadSuggest.innerHTML = "Upload a CSV"
+    uploadSuggest.value = "Upload a CSV"
+    valueColumnSelect.append(uploadSuggest)
+    this.fillColDiv.append(valueColumnSelect)
+
 
   }
   /**
@@ -528,13 +555,11 @@ class CtrlOp {
   createSelector() {
 
     // get rid of previous select dropdown if it exists
-    if (document.querySelector("#fillCol")) {
-      document.querySelector("#fillCol").remove()
+    if (this.paneOb.paneDiv.querySelector("#fillCol")) {
+      this.paneOb.paneDiv.querySelector("#fillCol").remove()
     }
     // this is the selection element that is populated by the column names in the csv
 
-    let fillColDiv = document.createElement("div")
-    fillColDiv.id = "fillcoldiv"
     let valueColumnSelect = document.createElement("select")
     valueColumnSelect.id = "fillCol"
     for (let key of Object.keys(this.paneOb.csvData)) {
@@ -543,8 +568,7 @@ class CtrlOp {
       option.innerHTML = key
       valueColumnSelect.append(option)
     }
-    fillColDiv.append(valueColumnSelect)
-    this.ctrlDiv.append(fillColDiv)
+    this.fillColDiv.append(valueColumnSelect)
     valueColumnSelect.onchange = () => {
       // make access to the selector possible
 
@@ -1426,7 +1450,7 @@ class Canvas {
                     ${ name}
               </p>
               <p class="tooltip-child">
-              <p>Multiple row entries for region</p>
+              <p>Multiple CSV row entries for region</p>
               <p>Utilize Alt Column Filter to view separately</p>
             <p>average value: ${this.regNameToValueMap[name].value.toFixed(5)}
             </h3>
