@@ -1683,14 +1683,14 @@ class Canvas {
       r: 254, g: 232, b: 200
     }
     let blue = {
-      r: 0,
-      g: 0,
-      b: 255
+      r:67,g:162,b:202
     }
+    let lowcolor,highcolor
     // iterate over the boundary data
     for (let region of this.paneOb.sliceData.features) {
       // this is the object that has features, and properties
       for (let coords of region.geometry.coordinates) {
+        this.ctx.lineWidth = 1
         this.ctx.beginPath()
         this.invisictx.beginPath()
         // create simplified variable with points and region name
@@ -1714,7 +1714,7 @@ class Canvas {
         // check if its a roilisted
         if (this.paneOb.rois[linedata.region]) {
           if (this.paneOb.rois[linedata.region]) {
-            this.ctx.strokeStyle = "yellow"
+            this.ctx.strokeStyle = "black"
             this.ctx.lineWidth = 5
             this.ctx.stroke()
           }
@@ -1726,9 +1726,9 @@ class Canvas {
           }
         }
 
-        // default fill gray, update if nec
-          this.ctx.fillStyle = "gray"
-          this.ctx.fill()
+        // default stroke gray, update if nec
+        this.ctx.strokeStyle= "gray"
+        this.ctx.stroke()
         // these aren't defined yet
         if (this.regNameToValueMap != undefined) {
           if (this.regNameToValueMap[linedata.region]) {
@@ -1747,8 +1747,19 @@ class Canvas {
           } 
           // setup a legend in the corner
           let gradient = this.ctx.createLinearGradient(0,0,0,this.can.height/4)
-          gradient.addColorStop(1,`rgb(${gray.r},${gray.g},${gray.b})`)
-          gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+          // color stop for rgb
+          if (this.scanDatamin < 0 && this.scanDatamax > 0) {
+            gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
+            gradient.addColorStop(.5,`rgb(${gray.r},${gray.g},${gray.b})`)
+            gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+          } else if ( this.scanDatamax > 0) {
+            gradient.addColorStop(1,`rgb(${gray.r},${gray.g},${gray.b})`)
+            gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+          } else {
+            // this is the case of blue only
+            gradient.addColorStop(0,`rgb(${gray.r},${gray.g},${gray.b})`)
+            gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
+          }
           let gradientWidth=10
           this.ctx.fillStyle = gradient
           let startx = this.can.width-this.margin*2 -gradientWidth
