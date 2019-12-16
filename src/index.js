@@ -1470,6 +1470,7 @@ class Canvas {
     */
     this.paneOb.dataForPlot = Object.entries(this.regNameToValueMap).reduce((prev,[k,v])=> {
       prev[k] = v.value
+      return prev
     },{})
   }
   /**
