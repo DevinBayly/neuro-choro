@@ -18,6 +18,15 @@ json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/G
   flex-wrap:wrap;
 }
 
+div#btnholder {
+  width:50%;
+  text-align:center;
+  padding:10%;
+}
+#btnholder button {
+  width:30%;
+  height:50px;
+}
 #backline {
   height: 10px;
   margin: 0px auto;
@@ -477,8 +486,8 @@ class CtrlOp {
     let valueColumnSelect = document.createElement("select")
     valueColumnSelect.id = "fillCol"
     let uploadSuggest = document.createElement("option")
-    uploadSuggest.innerHTML = "Upload a CSV"
-    uploadSuggest.value = "Upload a CSV"
+    uploadSuggest.innerHTML = "Upload a CSV to begin"
+    uploadSuggest.value = "Upload a to begin"
     valueColumnSelect.append(uploadSuggest)
     this.fillColDiv.append(valueColumnSelect)
 
@@ -1451,7 +1460,7 @@ class Canvas {
               </p>
               <p class="tooltip-child">
               <p>Multiple CSV row entries for region</p>
-              <p>Utilize Alt Column Filter to view separately</p>
+              <p>Utilize Filters to view separately</p>
             <p>average value: ${this.regNameToValueMap[name].value.toFixed(5)}
             </h3>
             `
@@ -1827,12 +1836,13 @@ class Canvas {
           this.ctx.fillRect(startx,0,endx,this.can.height/4)
           // add numeric values to the gradient
           // measure the text so it sits right next to the gradient
+          this.ctx.font = "15px Arial"
           let minmeasure = this.ctx.measureText(this.scanDatamin).width
           let maxmeasure = this.ctx.measureText(this.scanDatamax).width
           this.ctx.fillStyle = "black"
           // the -5 is a spacer for the text next to the gradient bar
           this.ctx.fillText(this.scanDatamin,startx- minmeasure - 5,this.can.height/4)
-          this.ctx.fillText(this.scanDatamax,startx- maxmeasure - 5,10)
+          this.ctx.fillText(this.scanDatamax,startx- maxmeasure - 5,15)
         }
         this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
         this.invisictx.fill()
