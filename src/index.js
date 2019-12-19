@@ -1758,7 +1758,6 @@ class Canvas {
     let blue = {
       r:67,g:162,b:202
     }
-    let lowcolor,highcolor
     // iterate over the boundary data
     for (let region of this.paneOb.sliceData.features) {
       // this is the object that has features, and properties
@@ -1819,40 +1818,43 @@ class Canvas {
             this.ctx.fill()
             // query the region to color map
           } 
-          // setup a legend in the corner
-          let gradient = this.ctx.createLinearGradient(0,0,0,this.can.height/4)
-          // color stop for rgb
-          if (this.scanDatamin < 0 && this.scanDatamax > 0) {
-            gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
-            gradient.addColorStop(.5,`rgb(${gray.r},${gray.g},${gray.b})`)
-            gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
-          } else if ( this.scanDatamax > 0) {
-            gradient.addColorStop(1,`rgb(${gray.r},${gray.g},${gray.b})`)
-            gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
-          } else {
-            // this is the case of blue only
-            gradient.addColorStop(0,`rgb(${gray.r},${gray.g},${gray.b})`)
-            gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
-          }
-          let gradientWidth=10
-          this.ctx.fillStyle = gradient
-          let startx = this.can.width-this.margin -gradientWidth
-          let endx = this.can.width-this.margin*2
-          this.ctx.fillRect(startx,0,endx,this.can.height/4)
-          // add numeric values to the gradient
-          // measure the text so it sits right next to the gradient
-          this.ctx.font = "15px Arial"
-          let minmeasure = this.ctx.measureText(this.scanDatamin).width
-          let maxmeasure = this.ctx.measureText(this.scanDatamax).width
-          this.ctx.fillStyle = "black"
-          // the -5 is a spacer for the text next to the gradient bar
-          this.ctx.fillText(this.scanDatamin,startx- minmeasure - 5,this.can.height/4)
-          this.ctx.fillText(this.scanDatamax,startx- maxmeasure - 5,15)
         }
         this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
         this.invisictx.fill()
       }
     }
+    if (this.scanDatamin && this.scanDatamax) {
+    // setup a legend in the corner
+    let gradient = this.ctx.createLinearGradient(0,0,0,this.can.height/4)
+    // color stop for rgb
+    if (this.scanDatamin < 0 && this.scanDatamax > 0) {
+      gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
+      gradient.addColorStop(.5,`rgb(${gray.r},${gray.g},${gray.b})`)
+      gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+    } else if ( this.scanDatamax > 0) {
+      gradient.addColorStop(1,`rgb(${gray.r},${gray.g},${gray.b})`)
+      gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+    } else {
+      // this is the case of blue only
+      console.log(this.scanDatamax,"max",this.scanDatamin,"min")
+      gradient.addColorStop(0,`rgb(${gray.r},${gray.g},${gray.b})`)
+      gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
+    }
+    let gradientWidth=10
+    this.ctx.fillStyle = gradient
+    let startx = this.can.width-this.margin -gradientWidth
+    let endx = this.can.width-this.margin*2
+    this.ctx.fillRect(startx,0,endx,this.can.height/4)
+    // add numeric values to the gradient
+    // measure the text so it sits right next to the gradient
+    this.ctx.font = "15px Arial"
+    let minmeasure = this.ctx.measureText(this.scanDatamin).width
+    let maxmeasure = this.ctx.measureText(this.scanDatamax).width
+    this.ctx.fillStyle = "black"
+    // the -5 is a spacer for the text next to the gradient bar
+    this.ctx.fillText(this.scanDatamin,startx- minmeasure - 5,this.can.height/4)
+    this.ctx.fillText(this.scanDatamax,startx- maxmeasure - 5,15)
+  }
   }
 }
 
