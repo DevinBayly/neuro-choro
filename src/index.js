@@ -10,6 +10,11 @@ json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/G
 %% md
 <div id="applicationHolder"></div>
 %% css
+
+
+#minlabel {
+  padding-right:20px;
+}
 #applicationHolder, div {
   max-width:none !important;
 }
@@ -1200,7 +1205,7 @@ class FillColFilter {
     this.minlabel.className = "filterLabel"
     /** The max slider value, which changes due to user interaction with the div */
     this.maxlabel = document.createElement("p")
-    this.minlabel.id = "maxlabel"
+    this.maxlabel.id = "maxlabel"
     this.maxlabel.className = "filterLabel"
     let labelholder = document.createElement("div")
     labelholder.id = "labelholder"
@@ -1925,7 +1930,13 @@ let LerpCol = (c1, c2, t) => {
 
 
 let appHolder = document.querySelector("#applicationHolder")
-var app = new Application(appHolder, atlas, csvData, sessionData)
+if (document.querySelector("#sheet")) {
+  document.querySelector("#sheet").remove()
+}
+let cleanSheet = document.createElement("div")
+cleanSheet.id = "sheet"
+appHolder.append(cleanSheet)
+var app = new Application(cleanSheet, atlas, csvData, sessionData)
 
 // provide loaders for session and csv data sources
 var csvData, sessionData
