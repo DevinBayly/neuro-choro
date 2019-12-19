@@ -1,7 +1,7 @@
 %% md
 # Neuro-choropleth 
 
-This is a tool to efficiently perform initial analyses of neuro imaging multi subject scans. 
+This is a tool to efficiently perform initial analyses of neuroimaging multi subject scans. 
 %% fetch
 json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/GeoJson_Brains/totalfix.json
 
@@ -1186,7 +1186,8 @@ class FillColFilter {
     /** Interpolator instance to provide values in the fill column range given values 0 to 1 related to slider div placement on page */
     this.interpolator = interpolator()
     // values of v go in which range from 0 to 1
-    this.interpolator.setup(0, this.absmin, 1, this.absmax)
+    // the additional -1 and +1 make it so that we can still see all the data if the sliders are set to their extremes
+    this.interpolator.setup(0, this.absmin-1, 1, this.absmax+1)
 
     /** This is the html element for the max fill slider  */
     this.maxel = max
@@ -1296,9 +1297,21 @@ class FillColFilter {
      * @instance
     */
     this.paneOb.filteredFillColData = this.data.map(e => {
-      if (e >= fillmin && e <= fillmax) {
-        return e
+      // handle the three cases that one or the other (min or max) is set, or both
+      if (!isNaN(fillmin) && !isNaN(fillmax)) {
+        if (e >= fillmin && e <= fillmax) {
+          return e
+        }
+      } else if(!isNaN(fillmin)) {
+        if ( e>= fillmin){
+          return e
+        }
+      } else {
+        if (e<= fillmax) {
+          return e
+        }
       }
+
       return NaN
     })
     // emit an actual canvas filtered event 
@@ -1762,7 +1775,7 @@ class Canvas {
     for (let region of this.paneOb.sliceData.features) {
       // this is the object that has features, and properties
       for (let coords of region.geometry.coordinates) {
-        this.ctx.lineWidth = 1
+        this.ctx.lineWidth = 2
         this.ctx.beginPath()
         this.invisictx.beginPath()
         // create simplified variable with points and region name
@@ -1823,7 +1836,7 @@ class Canvas {
         this.invisictx.fill()
       }
     }
-    if (this.scanDatamin && this.scanDatamax) {
+    if (this.scanDatamin != undefined && this.scanDatamax != undefined) {
     // setup a legend in the corner
     let gradient = this.ctx.createLinearGradient(0,0,0,this.can.height/4)
     // color stop for rgb
