@@ -1376,7 +1376,7 @@ class divMaker {
       document.addEventListener("mouseup", cancelMove)
     }
     d.addEventListener("mousedown", click)
-    d.style.background = "rgb(157,157,157)"
+    d.style.background = "rgb(157,157,157,.4)"
     d.style["border-radius"] = "15px"
   }
   // this function is replaced in the instances of the object, class inheritance case
