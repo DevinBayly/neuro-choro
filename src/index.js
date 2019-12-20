@@ -3,7 +3,7 @@
 
 This is a tool to efficiently perform initial analyses of neuroimaging multi subject scans. 
 %% fetch
-json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/HCP/src/GeoJson_Brains/totalfix.json
+json: atlas = https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/src/GeoJson_Brains/totalfix.json
 
 
 
@@ -126,11 +126,11 @@ class Application {
    * @param {*} id this is the tagid of the pane that should get removed
    */
   removePane(id) {
-    for (let ind = 0;ind < this.panes.length;ind++) {
+    for (let ind = 0; ind < this.panes.length; ind++) {
       let pane = this.panes[ind]
       if (pane.paneDiv.id == id) {
         // splice out the specific pane
-        this.panes.splice(ind,1)
+        this.panes.splice(ind, 1)
       }
     }
   }
@@ -182,22 +182,22 @@ class Application {
    * @memberof Application
    */
   async import() {
-      // do a fetch for a file 
+    // do a fetch for a file 
     let readFile = (e) => {
       fetch(URL.createObjectURL(e.target.files[0]))
         .then(res => {
-            return res.json()
+          return res.json()
         })
         .then(contents => {
-            // run the application session loader
-            this.sessionRecreator(contents)
+          // run the application session loader
+          this.sessionRecreator(contents)
         })
     }
-      let inputFile = document.createElement("input")
-      inputFile.type = "file"
-      inputFile.onchange = readFile
-      // trigger the opening of a file explorer window
-      inputFile.click()
+    let inputFile = document.createElement("input")
+    inputFile.type = "file"
+    inputFile.onchange = readFile
+    // trigger the opening of a file explorer window
+    inputFile.click()
     // iterate over the panes
 
   }
@@ -332,7 +332,6 @@ class Application {
     this.panes.push(newPane)
   }
 }
-
 class Pane {
   /**
    *Creates an instance of Pane. Initiates construction of the ctrl op object for the pane all the buttons and stuff that have control over the canvas. Initiates creation of the canvas
@@ -353,7 +352,7 @@ class Pane {
     // xicon is a global created at the top of the notebook
     this.removeIcon.src = "https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/x.png"
     this.removeIcon.id = "paneremoveicon"
-    this.removeIcon.addEventListener("click",this.removePane.bind(this))
+    this.removeIcon.addEventListener("click", this.removePane.bind(this))
     this.paneDiv.append(this.removeIcon)
     /**  */
     this.panesHolder = panesHolder
@@ -366,15 +365,15 @@ class Pane {
       // make the name show in the pane of the csv you loaded
       this.csvFilename = e.target.files[0].name
       this.paneDiv.querySelector("#csvfilename").innerHTML = this.csvFilename
-    
+
       fetch(URL.createObjectURL(e.target.files[0]))
         .then(res => {
-            return res.text()
+          return res.text()
         })
         .then(contents => {
-            this.csvText = contents
-            // use the call back
-            cb()
+          this.csvText = contents
+          // use the call back
+          cb()
         })
     }
     return (e) => {
@@ -393,7 +392,6 @@ class Pane {
     this.paneDiv.remove()
   }
 }
-
 class CtrlOp {
 
 
@@ -467,11 +465,11 @@ class CtrlOp {
   csvLoader() {
     // create buttons to upload csvData and sessionData
     let loadButton = document.createElement("button")
-    let callback = ()=> {
-        this.csvDataReader()
-        this.createSelector()
+    let callback = () => {
+      this.csvDataReader()
+      this.createSelector()
     }
-    
+
     let loadingCall = this.paneOb.loadRequestHandler(callback.bind(this))
     // how to make function that will call createSelector when the file has finished uploading
     loadButton.addEventListener("click", loadingCall)
@@ -484,7 +482,7 @@ class CtrlOp {
 
     let fillColDiv = document.createElement("div")
     fillColDiv.id = "fillcoldiv"
-    /** create a constant placeholder for the fillcol selector*/ 
+    /** create a constant placeholder for the fillcol selector*/
     this.fillColDiv = fillColDiv
     this.ctrlDiv.append(this.fillColDiv)
     // put in empty selector first
@@ -586,20 +584,20 @@ class CtrlOp {
     valueColumnSelect.onchange = () => {
       // make access to the selector possible
 
-    /** This is the name of the column selected for use as the fill color of the regions drawn to the canvas.
-     * @alias fillColValue
-     * @memberof Pane
-     * @instance
-    */
+      /** This is the name of the column selected for use as the fill color of the regions drawn to the canvas.
+       * @alias fillColValue
+       * @memberof Pane
+       * @instance
+      */
       this.paneOb.fillColValue = valueColumnSelect.value
       // parse the data into numeric
       let numericData = this.paneOb.csvData[valueColumnSelect.value].map(e => parseFloat(e))
 
-    /** This is a copy of the unfiltered numeric data in the fill column of the CSV.
-     * @alias initialColData
-     * @memberof Pane
-     * @instance
-    */
+      /** This is a copy of the unfiltered numeric data in the fill column of the CSV.
+       * @alias initialColData
+       * @memberof Pane
+       * @instance
+      */
       this.paneOb.initialColData = numericData
 
       // establish filters for the selected column of data
@@ -687,7 +685,7 @@ class CtrlOp {
     // makes several attributes helpful for handling slider change
     this.prepRangeData()
     // draw a default slice
-    this.slider.value = Math.round(this.sliderSlices.sagittal.length/2)
+    this.slider.value = Math.round(this.sliderSlices.sagittal.length / 2)
 
     // add the on input event emitter  for when slider moves
     this.slider.oninput = () => {
@@ -695,38 +693,38 @@ class CtrlOp {
       this.selectedSliceIndex = parseInt(this.slider.value)
       // now determine which slice we are supposed to draw the boundaries of provided the selected brain view an the slice index
       let ind = parseInt(range.value)
-    /** This is the value that the slider is currently set at. 
-     * @alias sliderIndex
-     * @memberof Pane
-     * @instance
-    */
+      /** This is the value that the slider is currently set at. 
+       * @alias sliderIndex
+       * @memberof Pane
+       * @instance
+      */
       this.paneOb.sliderIndex = ind
       // name is helpful at time of export
       let name = this.sliderSlices[this.paneOb.brainView][ind]
-    /** This is the name of the slice file that we are drawing to the canvas. The actual name was once a geojson file in a directory, but now it also corresponds to an object within the regionBoundaryData attribute of the Pane as well as the application.
-     * @alias sliceName
-     * @memberof Pane
-     * @instance
-    */
+      /** This is the name of the slice file that we are drawing to the canvas. The actual name was once a geojson file in a directory, but now it also corresponds to an object within the regionBoundaryData attribute of the Pane as well as the application.
+       * @alias sliceName
+       * @memberof Pane
+       * @instance
+      */
       this.paneOb.sliceName = name
       this.sliderlabel.innerHTML = this.sliderMeasurements[this.paneOb.brainView][ind]
-    /** This is the particular value of the slice displayed on the canvas. Can be positive or negative and is followed by a unit of "mm".
-     * @alias sliceMeasure
-     * @memberof Pane
-     * @instance
-    */
+      /** This is the particular value of the slice displayed on the canvas. Can be positive or negative and is followed by a unit of "mm".
+       * @alias sliceMeasure
+       * @memberof Pane
+       * @instance
+      */
       this.paneOb.sliceMeasure = this.sliderlabel.innerHTML
       // provide the name of the slice to the canvas drawing machinery
       // sliderchange is a custom event that the canvas is listening for
       let e = new Event("sliderchange")
       if (this.eTarget) {
         let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
-        
-    /** This is the actual object containing the regions boundary coordinates for the particular slice the user has specified using the slider and the brain view options.
-     * @alias sliceData
-     * @memberof Pane
-     * @instance
-    */
+
+        /** This is the actual object containing the regions boundary coordinates for the particular slice the user has specified using the slider and the brain view options.
+         * @alias sliceData
+         * @memberof Pane
+         * @instance
+        */
         this.paneOb.sliceData = slice
         // dispatch to the eTarget the canvas
         this.eTarget.dispatchEvent(e)
@@ -757,7 +755,6 @@ class CtrlOp {
 
   }
 }
-
 class AltColumnFilters {
   /**
    *Creates an instance of AltColumnFilters.
@@ -968,7 +965,6 @@ class AltColumnFilters {
 
 
 
-
 class AltHolder {
   /**
    *Creates an instance of AltHolder. Generates a button to add altRows an instantiates the list to hold each filter object
@@ -1113,7 +1109,6 @@ class AltHolder {
   }
 
 }
-
 class FillColFilter {
   /**
    *Creates an instance of FillColFilter.
@@ -1187,7 +1182,7 @@ class FillColFilter {
     this.interpolator = interpolator()
     // values of v go in which range from 0 to 1
     // the additional -1 and +1 make it so that we can still see all the data if the sliders are set to their extremes
-    this.interpolator.setup(0, this.absmin-1, 1, this.absmax+1)
+    this.interpolator.setup(0, this.absmin - 1, 1, this.absmax + 1)
 
     /** This is the html element for the max fill slider  */
     this.maxel = max
@@ -1220,13 +1215,13 @@ class FillColFilter {
         /** The minimum value. This is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box */
         this.min = maxleft
         // update min label
-        this.minlabel.innerHTML = this.interpolator.calc(maxleft / this.width).toFixed(5)
+        this.minlabel.innerHTML = this.interpolator.calc(maxleft / this.width).toFixed(3)
         return true
       }
       // used at filter time
       this.min = v
       // update min label and account for the divslider width
-      this.minlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
+      this.minlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(3)
       return false
     }
     max.additionalLimit = (v) => {
@@ -1235,10 +1230,10 @@ class FillColFilter {
         max.element.style.left = `${minleft}px`
         /**  The maximum value. Again, this is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box  */
         this.max = minleft
-        this.maxlabel.innerHTML = this.interpolator.calc(minleft / this.width).toFixed(5)
+        this.maxlabel.innerHTML = this.interpolator.calc(minleft / this.width).toFixed(3)
         return true
       }
-      this.maxlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(5)
+      this.maxlabel.innerHTML = this.interpolator.calc(v / this.width).toFixed(3)
       // used at filter time
       this.max = v
       return false
@@ -1276,8 +1271,8 @@ class FillColFilter {
    */
   filter() {
     // calculate the actual min activity value
-    let fillmin = this.interpolator.calc(this.min / this.width).toFixed(5)
-    let fillmax = this.interpolator.calc(this.max / this.width).toFixed(5)
+    let fillmin = this.interpolator.calc(this.min / this.width).toFixed(3)
+    let fillmax = this.interpolator.calc(this.max / this.width).toFixed(3)
     // give this information to the paneOb,useful for tooltips
     /** The min value in the fill data range used for filtering the fill column's data.
      * @alias fillmin
@@ -1302,12 +1297,12 @@ class FillColFilter {
         if (e >= fillmin && e <= fillmax) {
           return e
         }
-      } else if(!isNaN(fillmin)) {
-        if ( e>= fillmin){
+      } else if (!isNaN(fillmin)) {
+        if (e >= fillmin) {
           return e
         }
       } else {
-        if (e<= fillmax) {
+        if (e <= fillmax) {
           return e
         }
       }
@@ -1333,7 +1328,6 @@ class FillColFilter {
     this.absmin = absmin
   }
 }
-
 
 class divMaker {
   /**
@@ -1383,14 +1377,13 @@ class divMaker {
     }
     d.addEventListener("mousedown", click)
     d.style.background = "rgb(157,157,157)"
-    d.style["border-radius"]="15px"
+    d.style["border-radius"] = "15px"
   }
   // this function is replaced in the instances of the object, class inheritance case
   additionalLimit(v) {
     return undefined
   }
 }
-
 
 class Canvas {
 
@@ -1469,9 +1462,9 @@ class Canvas {
           // prev value mult by the prev count + new div count +1 == rolling ave
           let prev = this.regNameToValueMap[name]
           if (!isNaN(prev.value) && !isNaN(this.fillData[i])) {
-          this.regNameToValueMap[name] = {value:(prev.value*prev.count + this.fillData[i])/(prev.count +1),count:prev.count+1}
-          // make a note that there is a row with multiple entries in the current slice
-          this.paneOb.rois[name] = `
+            this.regNameToValueMap[name] = { value: (prev.value * prev.count + this.fillData[i]) / (prev.count + 1), count: prev.count + 1 }
+            // make a note that there is a row with multiple entries in the current slice
+            this.paneOb.rois[name] = `
             <h3>Selected Region
               <p class="tooltip-child" id="regionname">
                     ${ name}
@@ -1479,13 +1472,13 @@ class Canvas {
               <p class="tooltip-child">
               <p>Multiple CSV row entries for region</p>
               <p>Utilize Filters to view separately</p>
-            <p>average value: ${this.regNameToValueMap[name].value.toFixed(5)}
+            <p>average value: ${this.regNameToValueMap[name].value.toFixed(3)}
             </h3>
             `
           }
         } else {
           if (!isNaN(this.fillData[i])) {
-            this.regNameToValueMap[name] = {value:this.fillData[i],count:1}
+            this.regNameToValueMap[name] = { value: this.fillData[i], count: 1 }
           }
         }
       })
@@ -1495,10 +1488,10 @@ class Canvas {
      * @memberof Pane
      * @instance
     */
-    this.paneOb.dataForPlot = Object.entries(this.regNameToValueMap).reduce((prev,[k,v])=> {
+    this.paneOb.dataForPlot = Object.entries(this.regNameToValueMap).reduce((prev, [k, v]) => {
       prev[k] = v.value
       return prev
-    },{})
+    }, {})
   }
   /**
    *The initialization of the canvas. Add elements like the canvas (invisible one too), textarea, and infoholders to the canvasHolder field on the class. Create listeners for events that trigger setup and draw functions to execute.
@@ -1581,7 +1574,7 @@ class Canvas {
     }
     // will update the map used in the draw to determine the color of a region
     if (this.paneOb.csvData) {
-    this.makeRegDataMap()
+      this.makeRegDataMap()
     }
     // initialize the color setting for the invisican
     let cc = color_collection(this.paneOb.sliceData.features.length)
@@ -1668,7 +1661,7 @@ class Canvas {
                     ${ regionName}
               </p>
               <p class="tooltip-child">
-            <p>value: ${this.regNameToValueMap[regionName].value.toFixed(5)}
+            <p>value: ${this.regNameToValueMap[regionName].value.toFixed(3)}
             </p><p>view: ${this.paneOb.brainView}
             </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
             </p><p>slice: ${this.paneOb.sliceMeasure}
@@ -1727,137 +1720,143 @@ class Canvas {
    * @memberof Canvas
    */
   calcValueColMinMax() {
-    /** These values are the min of the entire fillData provided to the canvas. This is used in linearly interpolating the color of the fill for a region if it has data. This is the minimum value */
-    this.scanDatamin = 0
-    /** This is the maximum value of the fillData for the canvas. */
-    this.scanDatamax = 0
-    for (let row of this.fillData) {
-      if (row > this.scanDatamax) {
-        this.scanDatamax = parseFloat(row).toFixed(4)
+    let noNan = this.fillData.reduce((acc, cur) => {
+      if (!isNaN(cur)) {
+        acc.push(cur)
       }
-      if (row < this.scanDatamin) {
-        this.scanDatamin = parseFloat(row).toFixed(4)
-      }
+      return acc
+    }, [])
+    // if the panehas a filter min and max set, scan datamin and max should be equal
+    if (!isNaN(this.paneOb.valFilterMin)) {
+      this.scanDatamin = this.paneOb.valFilterMin
+    } else {
+      /** These values are the min of the entire fillData provided to the canvas. This is used in linearly interpolating the color of the fill for a region if it has data. This is the minimum value */
+      this.scanDatamin = Math.min(...noNan).toFixed(3)
+    }
+    if (!isNaN(this.paneOb.valFilterMax)) {
+      this.scanDatamax = this.paneOb.valFilterMax
+
+    } else {
+      /** This is the maximum value of the fillData for the canvas. */
+      this.scanDatamax = Math.max(...noNan).toFixed(3)
     }
     // this normalizes the value from the scan data into the range 0 to 1 for color interpolation
-    let negativeCol = interpolator()
-    negativeCol.setup(this.scanDatamin, 0, 0, 1)
-    let positiveCol = interpolator()
-    positiveCol.setup(0, 0, this.scanDatamax, 1)
     /** color interpolators for fill */
-    this.colInterpolatorPair = {neg:negativeCol,pos:positiveCol}  
+    this.colInterpolator = interpolator()
+    this.colInterpolator.setup(this.scanDatamin, 0, this.scanDatamax, 1)
     // calculate the min and maxes of the scan data for each scan
   }
 
-  /**
-   *The all important drawing function. Responsible for clearing out old tooltips, generating color interpolators (gray to red + values) (blue to gray for - values). Actual lines are created by iterating over the features of the geojson slice specified by the brain view and the slider. paths are created for the visible and invisible canvases, and yellow strokes are provided for areas that are specified in the rois field on the canvas class. Fill values are linearly interpolated to the color scheme selected if the value for the specific isn't NaN.
-   *
-   * @memberof Canvas
-   */
-  drawCanvas() {
-    //TODO find better version of how to structure so that the margin can be programmatically set
-    this.ctx.clearRect(0, 0, this.can.width, this.can.height)
-    this.invisictx.clearRect(0, 0, this.can.width, this.can.height)
-    // remove previous tooltips
-    while (this.infoHolder.firstChild) {
-      this.infoHolder.removeChild(this.infoHolder.firstChild)
-    }
-    let red = {
-      r: 227, g: 74, b: 51
-    }
-    let gray = {
-      r: 254, g: 232, b: 200
-    }
-    let blue = {
-      r:67,g:162,b:202
-    }
-    // iterate over the boundary data
-    for (let region of this.paneOb.sliceData.features) {
-      // this is the object that has features, and properties
-      for (let coords of region.geometry.coordinates) {
-        this.ctx.lineWidth = 2
-        this.ctx.beginPath()
-        this.invisictx.beginPath()
-        // create simplified variable with points and region name
-        let linedata = { points: coords, region: region.properties.regionName }
 
-        // begin actual drawing to the canvas
-        let first = linedata.points[0]
-        let x = this.xinterp.calc(first[0])
-        let y = this.yinterp.calc(first[1])
-        this.ctx.moveTo(x, y)
-        this.invisictx.moveTo(x, y)
-        for (let i = 1; i < linedata.points.length; i++) {
-          let pt = linedata.points[i]
-          let x = this.xinterp.calc(pt[0])
-          let y = this.yinterp.calc(pt[1])
-          this.ctx.lineTo(x, y)
-          this.invisictx.lineTo(x, y)
-        }
-        this.ctx.closePath()
-        this.invisictx.closePath()
-        // check if its a roilisted
-        if (this.paneOb.rois[linedata.region]) {
-          if (this.paneOb.rois[linedata.region]) {
-            this.ctx.strokeStyle = "black"
-            this.ctx.lineWidth = 5
-            this.ctx.stroke()
-          }
-          // add tooltips that are visible
-          let regId = linedata.region.replace(/[-_]/g, "")
-          // if we don't find the element must make the tooltip
-          if (!document.getElementById(`tooltip${regId}`)) {
-            this.tooltipMaker(linedata.region, this.paneOb.rois[linedata.region])
-          }
-        }
+/**
+ *The all important drawing function. Responsible for clearing out old tooltips, generating color interpolators (gray to red + values) (blue to gray for - values). Actual lines are created by iterating over the features of the geojson slice specified by the brain view and the slider. paths are created for the visible and invisible canvases, and yellow strokes are provided for areas that are specified in the rois field on the canvas class. Fill values are linearly interpolated to the color scheme selected if the value for the specific isn't NaN.
+ *
+ * @memberof Canvas
+ */
+drawCanvas() {
+  //TODO find better version of how to structure so that the margin can be programmatically set
+  this.ctx.clearRect(0, 0, this.can.width, this.can.height)
+  this.invisictx.clearRect(0, 0, this.can.width, this.can.height)
+  // remove previous tooltips
+  while (this.infoHolder.firstChild) {
+    this.infoHolder.removeChild(this.infoHolder.firstChild)
+  }
+  let red = {
+    r: 227, g: 74, b: 51
+  }
+  let gray = {
+    r: 254, g: 232, b: 200
+  }
+  let blue = {
+    r: 67, g: 162, b: 202
+  }
+  // iterate over the boundary data
+  for (let region of this.paneOb.sliceData.features) {
+    // this is the object that has features, and properties
+    for (let coords of region.geometry.coordinates) {
+      this.ctx.lineWidth = 2
+      this.ctx.beginPath()
+      this.invisictx.beginPath()
+      // create simplified variable with points and region name
+      let linedata = { points: coords, region: region.properties.regionName }
 
-        // default stroke gray, update if nec
-        this.ctx.strokeStyle= "gray"
-        this.ctx.stroke()
-        // these aren't defined yet
-        if (this.regNameToValueMap != undefined) {
-          if (this.regNameToValueMap[linedata.region]) {
-            let scanData = this.regNameToValueMap[linedata.region].value
-            let lerpc
-            if (scanData < 0) {
-              // use the blue to gray instead of gray to red
-              let t = this.colInterpolatorPair.neg.calc(scanData)
-              lerpc = LerpCol(blue, gray, t)
-            } else {
-              let t = this.colInterpolatorPair.pos.calc(scanData)
-              lerpc = LerpCol(gray, red, t)
-            }
-            this.ctx.fillStyle = lerpc
-            this.ctx.fill()
-            // query the region to color map
-          } 
-        }
-        this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
-        this.invisictx.fill()
+      // begin actual drawing to the canvas
+      let first = linedata.points[0]
+      let x = this.xinterp.calc(first[0])
+      let y = this.yinterp.calc(first[1])
+      this.ctx.moveTo(x, y)
+      this.invisictx.moveTo(x, y)
+      for (let i = 1; i < linedata.points.length; i++) {
+        let pt = linedata.points[i]
+        let x = this.xinterp.calc(pt[0])
+        let y = this.yinterp.calc(pt[1])
+        this.ctx.lineTo(x, y)
+        this.invisictx.lineTo(x, y)
       }
+      this.ctx.closePath()
+      this.invisictx.closePath()
+      // check if its a roilisted
+      if (this.paneOb.rois[linedata.region]) {
+        if (this.paneOb.rois[linedata.region]) {
+          this.ctx.strokeStyle = "black"
+          this.ctx.lineWidth = 5
+          this.ctx.stroke()
+        }
+        // add tooltips that are visible
+        let regId = linedata.region.replace(/[-_]/g, "")
+        // if we don't find the element must make the tooltip
+        if (!document.getElementById(`tooltip${regId}`)) {
+          this.tooltipMaker(linedata.region, this.paneOb.rois[linedata.region])
+        }
+      }
+
+      // default stroke gray, update if nec
+      this.ctx.strokeStyle = "gray"
+      this.ctx.stroke()
+      // these aren't defined yet
+      if (this.regNameToValueMap != undefined) {
+        if (this.regNameToValueMap[linedata.region]) {
+          let scanData = this.regNameToValueMap[linedata.region].value
+          let lerpc
+          if (scanData < 0) {
+            // use the blue to gray instead of gray to red
+            let t = this.colInterpolator.calc(scanData)
+            lerpc = LerpCol(blue, gray, t)
+          } else {
+            let t = this.colInterpolator.calc(scanData)
+            lerpc = LerpCol(gray, red, t)
+          }
+          this.ctx.fillStyle = lerpc
+          this.ctx.fill()
+          // query the region to color map
+        }
+      }
+      this.invisictx.fillStyle = `rgb(${this.regToColMap[linedata.region][0]},${this.regToColMap[linedata.region][1]},${this.regToColMap[linedata.region][2]})`
+      this.invisictx.fill()
     }
-    if (this.scanDatamin != undefined && this.scanDatamax != undefined) {
+  }
+  if (this.scanDatamin != undefined && this.scanDatamax != undefined) {
     // setup a legend in the corner
-    let gradient = this.ctx.createLinearGradient(0,0,0,this.can.height/4)
+    let gradient = this.ctx.createLinearGradient(0, 0, 0, this.can.height / 4)
     // color stop for rgb
     if (this.scanDatamin < 0 && this.scanDatamax > 0) {
-      gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
-      gradient.addColorStop(.5,`rgb(${gray.r},${gray.g},${gray.b})`)
-      gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
-    } else if ( this.scanDatamax > 0) {
-      gradient.addColorStop(1,`rgb(${gray.r},${gray.g},${gray.b})`)
-      gradient.addColorStop(0,`rgb(${red.r},${red.g},${red.b})`)
+      gradient.addColorStop(1, `rgb(${blue.r},${blue.g},${blue.b})`)
+      gradient.addColorStop(.5, `rgb(${gray.r},${gray.g},${gray.b})`)
+      gradient.addColorStop(0, `rgb(${red.r},${red.g},${red.b})`)
+    } else if (this.scanDatamax > 0) {
+      gradient.addColorStop(1, `rgb(${gray.r},${gray.g},${gray.b})`)
+      gradient.addColorStop(0, `rgb(${red.r},${red.g},${red.b})`)
     } else {
       // this is the case of blue only
-      console.log(this.scanDatamax,"max",this.scanDatamin,"min")
-      gradient.addColorStop(0,`rgb(${gray.r},${gray.g},${gray.b})`)
-      gradient.addColorStop(1,`rgb(${blue.r},${blue.g},${blue.b})`)
+      console.log(this.scanDatamax, "max", this.scanDatamin, "min")
+      gradient.addColorStop(0, `rgb(${gray.r},${gray.g},${gray.b})`)
+      gradient.addColorStop(1, `rgb(${blue.r},${blue.g},${blue.b})`)
     }
-    let gradientWidth=10
+    let gradientWidth = 10
     this.ctx.fillStyle = gradient
-    let startx = this.can.width-this.margin -gradientWidth
-    let endx = this.can.width-this.margin*2
-    this.ctx.fillRect(startx,0,endx,this.can.height/4)
+    let startx = this.can.width - this.margin - gradientWidth
+    let endx = this.can.width - this.margin * 2
+    this.ctx.fillRect(startx, 0, endx, this.can.height / 4)
     // add numeric values to the gradient
     // measure the text so it sits right next to the gradient
     this.ctx.font = "15px Arial"
@@ -1865,10 +1864,10 @@ class Canvas {
     let maxmeasure = this.ctx.measureText(this.scanDatamax).width
     this.ctx.fillStyle = "black"
     // the -5 is a spacer for the text next to the gradient bar
-    this.ctx.fillText(this.scanDatamin,startx- minmeasure - 5,this.can.height/4)
-    this.ctx.fillText(this.scanDatamax,startx- maxmeasure - 5,15)
+    this.ctx.fillText(this.scanDatamin, startx - minmeasure - 5, this.can.height / 4)
+    this.ctx.fillText(this.scanDatamax, startx - maxmeasure - 5, 15)
   }
-  }
+}
 }
 
 // non full blown classes
@@ -1942,8 +1941,6 @@ let LerpCol = (c1, c2, t) => {
 }
 
 
-
-
 let appHolder = document.querySelector("#applicationHolder")
 if (document.querySelector("#sheet")) {
   document.querySelector("#sheet").remove()
@@ -1955,8 +1952,8 @@ var app = new Application(cleanSheet, atlas, csvData, sessionData)
 
 // provide loaders for session and csv data sources
 var csvData, sessionData
-let Handler = () => {
-}
+
+
 
 
 app.runApp()
@@ -1972,7 +1969,6 @@ js: https://cdn.plot.ly/plotly-latest.min.js
 %% md
 
 <div id="plotholder"></div>
-%% js
 
 let x = Object.keys(app.panes[0].dataForPlot)
 
