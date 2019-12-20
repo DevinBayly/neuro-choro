@@ -539,7 +539,7 @@ class CtrlOp {
     rad.name = "view" + this.paneOb.paneDiv.id
     rad.value = view
     let label = document.createElement("label")
-    label.innerHTML = view
+    label.innerHTML = view +"  "
     let div = document.createElement("div")
     div.className = "radcontainer"
     div.id = "radcontainer" + view
