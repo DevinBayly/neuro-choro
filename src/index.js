@@ -1,3 +1,4 @@
+
 %% md
 # Neuro-choropleth 
 
@@ -1209,7 +1210,7 @@ class FillColFilter {
     // prevent sliders from going over each other
     min.additionalLimit = (v) => {
       // stay below the max point
-      let maxleft = parseInt(max.element.style.left)
+      let maxleft = parseInt(max.element.style.left)-10
       if (v > maxleft) {
         min.element.style.left = `${maxleft}px`
         /** The minimum value. This is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box */
@@ -1225,7 +1226,7 @@ class FillColFilter {
       return false
     }
     max.additionalLimit = (v) => {
-      let minleft = parseInt(min.element.style.left)
+      let minleft = parseInt(min.element.style.left)+10
       if (v < minleft) {
         max.element.style.left = `${minleft}px`
         /**  The maximum value. Again, this is actually a measure in pixels from the side of the pane's bounding box. Not in the range of actual CSV data yet, will be set to zero if it is dragged beyond the pane's bounding box  */
@@ -1376,7 +1377,7 @@ class divMaker {
       document.addEventListener("mouseup", cancelMove)
     }
     d.addEventListener("mousedown", click)
-    d.style.background = "rgb(157,157,157,.4)"
+    d.style.background = "rgb(157,157,157,.8)"
     d.style["border-radius"] = "15px"
   }
   // this function is replaced in the instances of the object, class inheritance case
@@ -1957,26 +1958,3 @@ var csvData, sessionData
 
 
 app.runApp()
-
-%% md
-
-## Graphs using plotly from the data shown in the imaging panes.
-
-
-%% fetch
-js: https://cdn.plot.ly/plotly-latest.min.js
-
-%% md
-
-<div id="plotholder"></div>
-
-let x = Object.keys(app.panes[0].dataForPlot)
-
-let y = Object.values(app.panes[0].dataForPlot)
-
-
-let plot = document.querySelector("#plotholder")
-Plotly.plot(plot,[{
-  x,y,
-  type:"bar"
-}])
