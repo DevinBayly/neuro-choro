@@ -1,70 +1,104 @@
-body {
-  overflow:scroll;
-  height:100vw;
-  font-size:1.5vh;
+#colfilterTitle {
+  text-decoration:underline;
 }
-/*
-.pane {
-  width:30%;
+
+#minlabel {
+  padding-right:20px;
+}
+#applicationHolder, div {
+  max-width:none !important;
+}
+.infoholder{
+  display:flex;
+  flex-wrap:wrap;
+}
+
+div#btnholder {
+  width:50%;
+  text-align:center;
+  padding:10%;
   margin:0 auto;
 }
-*/
+.radcontainer input {
+  margin-right:15px;
+}
+#introholder {
+    width:50%;
+    margin:0 auto;
+}
+#introholder{
+    text-align:center;
+}
+#btnholder button {
+  width:30%;
+  height:50px;
+}
+#backline {
+  height: 10px;
+  margin: 0px auto;
+  background: rgba(80,80,80);
+  width: 90%;
+  position: relative;
+  top: 65%;
+}
+#labelholder {
 
-.filterLabel {
-  display:inline;
+    height: 30px;
+    margin: 0px 0px 10px 0px;
+    width: 25%;
+    display: flex;
 
 }
-.filterLabel::before{
-  content:"(";
+#allpanes {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
 }
-.filterLabel::after {
-  content:")";
+
+div.fillFilterDiv {
+    width: 25%;
+    height:30px;
+    margin: 0px 0px 10px 0px;
+    
 }
-.ctrlDiv {
+#sliderdiv::before {
+  content:"Slice Selector   ";
+  text-decoration:underline;
 }
-.radcontainer{
-  display:inline;
+
+#radcontaineraxial::before {
+  content:"Brain views ";
+  display:block;
+  text-decoration:underline;
 }
-#tooltip {
-  display:inline-block;
-  text-align:center;
-  margin:auto 0;
-  width:25%;
+.altFilterRow img {
+  width:20px;
+  vertical-align:middle;
+}
+#fillcoldiv::before {
+  content:"Region Color Column ";
+  text-decoration:underline;
+}
+
+div.pane {
+    border: 1px 
+    black solid;
+    border-radius: 20px;
+    padding: 10px;
+    width:600px;
+    margin:0 0;
+}
+#regionname {
+    background:  #dbdbba;
 }
 .infoHolder {
   display:flex;
+  flex-wrap:wrap;
 }
-.panemover {
-    background: #cacaf0;
-    display: inline-block;
-    position: relative;
-}
-.panemover img {
-  width:20%;
-}
-#btnholder {
-
-    width: 50%;
-    margin: 0 auto;
-    display: flex;
-    width: 100%;
-    justify-items: center;
-    justify-content: center;
-    height: 4.0vh;
-
-}
-#addbtn {
-
-    width: 20%;
-    height: 100%;
-
-}
-select {
-  font-size:1.5vh;
-}
-input {
-  font-size:1.5vh;
-}
-button {
-  font-size:1.5vh;
+.tooltipholder {
+    width:50%;
+    font-size: 12px;
+    border: 1px black solid;
+    border-radius: 20px;
+    text-align: center;
 }
