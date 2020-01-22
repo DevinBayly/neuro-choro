@@ -7,10 +7,15 @@ This tool is meant to assist with efficient initial, or subsequent exploration o
 **Choropleth**: This is a term for a presentation of data ontop of a map who's regions are geographic, taken from a brain atlas, or some other origin.
 
 **Pane** : This is the section of the page holding all the options for manipulating and viewing the neuro choropleth. Add pane creates more of these, export saves all visible panes to a JSON session file, and import loads a JSON session file so that the previous session's panes are visible and available for interaction. 
+
 **Region Color Column** : Refers to the column of the CSV data uploaded that the user would like to use as the fill color of the brain regions in the choropleth.
+
 **Brain Views** : These radio buttons give the option to view the brain regions from one of the 3 classical perspectives that researchers look at the brain (axial,sagittal,coronal).
+
 **Fill Color Filter** : This slider helps select what regions are colored for any given slice on the canvas. Dragging the min/max slider to the right/left respectively excludes values of the **Region Color Column** from inclusion in region fill color calculation and filling on canvas.
+
 **Alt Column Filter** : This option allows users to create filter rules that apply to columns that aren't the **Region Color Column**. For instance, a user can create a rule on the "Lobe" column that regions should only get fill values if they belong to a row with a "Lobe" value of "== R" or perhaps "!= L". Categorical variable columns have the "==" or "!=" operators, and Numerical variable columns have the ">" or "<" operations. As many or as few of these rules can be created as the user is interested in.
+
 
 
 ## Options for use
