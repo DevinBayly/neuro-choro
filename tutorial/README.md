@@ -21,7 +21,7 @@ This tool is meant to assist with efficient initial, or subsequent exploration o
 ## Options for use
 
 * First steps
-    * Navigate to the temporary home of the neuro-choropleth tool :[https://us-central1-neuro-choro.cloudfunctions.net/app/start](https://us-central1-neuro-choro.cloudfunctions.net/app/start)
+    * Navigate to the temporary home of the neuro-choropleth tool :[https://devinbayly.github.io/neuro-choro/](https://devinbayly.github.io/neuro-choro/)
     * Scroll down till you see a **Pane** 
     * Click **Upload a CSV**, and select one of the files created with the roixtractor
     * Now click on the drop down to the right of **Region Color Column**
