@@ -82,12 +82,12 @@ class Application {
         this.HO_CB_btn.innerHTML = "HO-CB"
         this.HO_CB_btn.id = "activeAtlas"
         this.atlasDiv.append(this.HO_CB_btn)
-        this.HO_CB_btn.onclick =()=> {this.atlasSwap()}
+        this.HO_CB_btn.onclick = () => { this.atlasSwap() }
         /** Human Connectome Project atlas selection button */
         this.HCP_btn = document.createElement("button")
         this.HCP_btn.innerHTML = "HCP"
         this.atlasDiv.append(this.HCP_btn)
-        this.HCP_btn.onclick = ()=> {
+        this.HCP_btn.onclick = () => {
             this.atlasSwap()
         }
     }
@@ -112,7 +112,7 @@ class Application {
         }
         this.regionBoundaryData = atlas
         // dump the sessions and then add one back
-        this.allPanes.map(p=> {
+        this.panes.map(p => {
             p.paneDiv.querySelector("#paneremoveicon").click()
         })
         this.addPane()
@@ -1667,25 +1667,52 @@ class Canvas {
         let globals = [1000, 1000, -1000, -1000]
         for (let sliceName in this.paneOb.regionBoundaryData) {
             let slice = this.paneOb.regionBoundaryData[sliceName]
-            for (let feature of slice.features) {
-                // likely nota  loop because coordinates is a single element array
-                for (let line of feature.geometry.coordinates) {
-                    for (let pt of line) {
-                        if (pt[0] < globals[0]) {
-                            globals[0] = pt[0]
+            console.log(slice.features)
+            // skip if there's a single point feature
+            if (!Array.isArray(slice.features)) {
+                if (slice.features.geometry == undefined) {
+                    // this isn't a region that we are storing
+                    continue
+                }
+                for (let line of slice.features.geometry.coordinates) {
+                        for (let pt of line) {
+                            if (pt[0] < globals[0]) {
+                                globals[0] = pt[0]
+                            }
+                            if (pt[1] < globals[1]) {
+                                globals[1] = pt[1]
+                            }
+                            if (pt[0] > globals[2]) {
+                                globals[2] = pt[0]
+                            }
+                            if (pt[1] > globals[3]) {
+                                globals[3] = pt[1]
+                            }
                         }
-                        if (pt[1] < globals[1]) {
-                            globals[1] = pt[1]
-                        }
-                        if (pt[0] > globals[2]) {
-                            globals[2] = pt[0]
-                        }
-                        if (pt[1] > globals[3]) {
-                            globals[3] = pt[1]
+                    }
+            } else {
+                for (let feature of slice.features) {
+                    // likely nota  loop because coordinates is a single element array
+                    for (let line of feature.geometry.coordinates) {
+                        for (let pt of line) {
+                            if (pt[0] < globals[0]) {
+                                globals[0] = pt[0]
+                            }
+                            if (pt[1] < globals[1]) {
+                                globals[1] = pt[1]
+                            }
+                            if (pt[0] > globals[2]) {
+                                globals[2] = pt[0]
+                            }
+                            if (pt[1] > globals[3]) {
+                                globals[3] = pt[1]
+                            }
                         }
                     }
                 }
+
             }
+
         }
         /** This is a list of smallest and largest values found in the x,y dimensions within the geojson data provided. This is used to scale the region coordinates to the space of the canvas  */
         this.regionSizes = globals
