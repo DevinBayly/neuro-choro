@@ -99,7 +99,7 @@ class Application {
         let activeBtn = document.querySelector("#activeAtlas")
         let atlas
         if (activeBtn.innerHTML == "HO-CB") {
-            atlas = await fetch("https://raw.githubusercontent.com/DevinBayly/neuro-choro/master/src/GeoJson_HCP-MMP1/total_small_parsed.json")
+            atlas = await fetch("http://localhost:8000/src/GeoJson_HCP-MMP1/hcpfix.json")
                 .then(res => res.json())
             this.HCP_btn.id = "activeAtlas"
             this.HO_CB_btn.id = ""
@@ -1667,51 +1667,28 @@ class Canvas {
         let globals = [1000, 1000, -1000, -1000]
         for (let sliceName in this.paneOb.regionBoundaryData) {
             let slice = this.paneOb.regionBoundaryData[sliceName]
-            console.log(slice.features)
             // skip if there's a single point feature
-            if (!Array.isArray(slice.features)) {
-                if (slice.features.geometry == undefined) {
-                    // this isn't a region that we are storing
-                    continue
-                }
-                for (let line of slice.features.geometry.coordinates) {
-                        for (let pt of line) {
-                            if (pt[0] < globals[0]) {
-                                globals[0] = pt[0]
-                            }
-                            if (pt[1] < globals[1]) {
-                                globals[1] = pt[1]
-                            }
-                            if (pt[0] > globals[2]) {
-                                globals[2] = pt[0]
-                            }
-                            if (pt[1] > globals[3]) {
-                                globals[3] = pt[1]
-                            }
+            for (let feature of slice.features) {
+                // likely nota  loop because coordinates is a single element array
+                for (let line of feature.geometry.coordinates) {
+                    for (let pt of line) {
+                        if (pt[0] < globals[0]) {
+                            globals[0] = pt[0]
                         }
-                    }
-            } else {
-                for (let feature of slice.features) {
-                    // likely nota  loop because coordinates is a single element array
-                    for (let line of feature.geometry.coordinates) {
-                        for (let pt of line) {
-                            if (pt[0] < globals[0]) {
-                                globals[0] = pt[0]
-                            }
-                            if (pt[1] < globals[1]) {
-                                globals[1] = pt[1]
-                            }
-                            if (pt[0] > globals[2]) {
-                                globals[2] = pt[0]
-                            }
-                            if (pt[1] > globals[3]) {
-                                globals[3] = pt[1]
-                            }
+                        if (pt[1] < globals[1]) {
+                            globals[1] = pt[1]
+                        }
+                        if (pt[0] > globals[2]) {
+                            globals[2] = pt[0]
+                        }
+                        if (pt[1] > globals[3]) {
+                            globals[3] = pt[1]
                         }
                     }
                 }
-
             }
+
+
 
         }
         /** This is a list of smallest and largest values found in the x,y dimensions within the geojson data provided. This is used to scale the region coordinates to the space of the canvas  */
