@@ -98,17 +98,21 @@ class Application {
     async atlasSwap() {
         let activeBtn = document.querySelector("#activeAtlas")
         let atlas
+        // make sure that they wish to proceed, if they click cancel, don't proceed with the function
+        if (!window.confirm("changing atlas will remove all your existing panes, proceed?")) {
+            return
+        }
         if (activeBtn.innerHTML == "HO-CB") {
             atlas = await fetch("https://raw.githubusercontent.com/DevinBayly/neuro-choro/master/src/GeoJson_HCP-MMP1/hcpfix.json")
                 .then(res => res.json())
             this.HCP_btn.id = "activeAtlas"
             this.HO_CB_btn.id = ""
+            // overwrite the paneOb state representation of atlas
         } else {
             atlas = await fetch("https://raw.githubusercontent.com/DevinBayly/neuro-choro/iodide/src/GeoJson_Brains/totalfix.json")
                 .then(res => res.json())
             this.HCP_btn.id = ""
             this.HO_CB_btn.id = "activeAtlas"
-
         }
         this.regionBoundaryData = atlas
         // dump the sessions and then add one back
