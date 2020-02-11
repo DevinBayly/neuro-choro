@@ -99,7 +99,7 @@ class Application {
         let activeBtn = document.querySelector("#activeAtlas")
         let atlas
         if (activeBtn.innerHTML == "HO-CB") {
-            atlas = await fetch("http://localhost:8000/src/GeoJson_HCP-MMP1/hcpfix.json")
+            atlas = await fetch("https://raw.githubusercontent.com/DevinBayly/neuro-choro/master/src/GeoJson_HCP-MMP1/hcpfix.json")
                 .then(res => res.json())
             this.HCP_btn.id = "activeAtlas"
             this.HO_CB_btn.id = ""
