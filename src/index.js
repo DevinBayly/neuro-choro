@@ -222,7 +222,7 @@ class Application {
         let expOb = { panes: [] }
         let rnames = Object.keys(this.panes[0].dataForPlot)
         let csvData = []
-        let csvString = "regionName"
+        let csvString = "regionname"
         let i = 0
         // iterate over the panes
         for (let pane of this.panes) {
@@ -1423,12 +1423,19 @@ class Canvas {
         /** This is the region name to value map that is referenced when fill colors are being selected for a region during draw(). The region names are the keys and the numeric data of the fill column becomes the values */
         this.regNameToValueMap = {}
         // drawregions without fill if nothing selected yet
+        // check if there's a regionname column in the csv data, use that instead, this is typically specific to the data from the hcp atlas 
+        let regionKey
+        if (this.paneOb.csvData["regionname"]) {
+            regionKey = "regionname"
+        } else {
+            regionKey = "region"
+        }
         if (this.fillData == undefined) {
-            this.paneOb.csvData["region"].map((e, i) => {
+            this.paneOb.csvData[regionKey].map((e, i) => {
                 this.regNameToValueMap[e.replace(/\s/, "")] = NaN
             })
         } else {
-            this.paneOb.csvData["region"].map((e, i) => {
+            this.paneOb.csvData[regionKey].map((e, i) => {
                 let name = e.replace(/\s/, "")
                 // help determine if there's multiple rows with this region's data
                 if (this.regNameToValueMap[name]) {
@@ -1591,15 +1598,15 @@ class Canvas {
     /**
      *This function generates a div element with specific innerHTML to append to the infoholder. Only happens for mouseclicks within a region to generate information about the region beneath the canvas. These tooltips disappear when no longer viewing a slice that features that region.
      *
-     * @param {*} regionName
+     * @param {*} regionname
      * @param {*} inner
      * @memberof Canvas
      */
-    tooltipMaker(regionName, inner) {
+    tooltipMaker(regionname, inner) {
         // make a little side box with the info in it
         // take away a chunk of the image at that area
         // remove any improper characters for the id
-        let id = regionName.replace(/[-_]/g, "")
+        let id = regionname.replace(/[-_]/g, "")
         let rightDiv = document.createElement("div")
         rightDiv.id = "tooltip" + id
         rightDiv.className = "tooltipholder"
@@ -1630,17 +1637,17 @@ class Canvas {
         let pix = Array(...ctx.getImageData(x, y, 1, 1).data.slice(0, 3))
         // query the invisible map
         if (this.colToRegMap[JSON.stringify(pix)] != undefined) {
-            let regionName = this.colToRegMap[JSON.stringify(pix)]
-            if (this.paneOb.rois[regionName] != undefined) {
-                delete this.paneOb.rois[regionName]
+            let regionname = this.colToRegMap[JSON.stringify(pix)]
+            if (this.paneOb.rois[regionname] != undefined) {
+                delete this.paneOb.rois[regionname]
             } else {
-                this.paneOb.rois[regionName] = `
+                this.paneOb.rois[regionname] = `
             <h3>Selected Region
               <p class="tooltip-child" id="regionname">
-                    ${ regionName}
+                    ${ regionname}
               </p>
               <p class="tooltip-child">
-            <p>value: ${this.regNameToValueMap[regionName].value.toFixed(3)}
+            <p>value: ${this.regNameToValueMap[regionname].value.toFixed(3)}
             </p><p>view: ${this.paneOb.brainView}
             </p><p>fillColumnFilter: ${this.paneOb.valFilterMin} <= value <= ${this.paneOb.valFilterMax} 
             </p><p>slice: ${this.paneOb.sliceMeasure}
