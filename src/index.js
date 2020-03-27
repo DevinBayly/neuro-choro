@@ -528,6 +528,7 @@ class CtrlOp {
             if (this.eTarget) {
                 let slice = this.paneOb.regionBoundaryData[this.sliderSlices[this.paneOb.brainView][this.paneOb.sliderIndex]]
                 this.paneOb.sliceData = slice
+                this.slider.oninput()
                 this.eTarget.dispatchEvent(e)
             }
         })
@@ -1524,6 +1525,7 @@ class Canvas {
         this.can.addEventListener("click", this.getPos.bind(this))
         //radiobutton and slider change have implications for the slice we are looking at
         this.can.addEventListener("radiobuttonchanged", () => {
+            // must also trigger a slider update because otherwise slices get counted wrong
             this.setupCanvas()
             this.drawCanvas()
         })
