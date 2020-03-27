@@ -1825,10 +1825,10 @@ class Canvas {
                         if (scanData < 0) {
                             // use the blue to gray instead of gray to red
                             let t = this.colInterpolator.calc(scanData)
-                            lerpc = LerpCol(blue, gray, t)
+                            lerpc = LerpCol( t)
                         } else {
                             let t = this.colInterpolator.calc(scanData)
-                            lerpc = LerpCol(gray, red, t)
+                            lerpc = LerpCol( t)
                         }
                         this.ctx.fillStyle = lerpc
                         this.ctx.fill()
@@ -1848,8 +1848,11 @@ class Canvas {
                 gradient.addColorStop(.5, `rgb(${gray.r},${gray.g},${gray.b})`)
                 gradient.addColorStop(0, `rgb(${red.r},${red.g},${red.b})`)
             } else if (this.scanDatamax > 0) {
-                gradient.addColorStop(1, `rgb(${gray.r},${gray.g},${gray.b})`)
-                gradient.addColorStop(0, `rgb(${red.r},${red.g},${red.b})`)
+                gradient.addColorStop(1.0, `rgb(255,255,178)`)
+                gradient.addColorStop(0.75, `rgb(254,204,92)`)
+                gradient.addColorStop(0.5, `rgb(253,141,60)`)
+                gradient.addColorStop(0.25, `rgb(240,59,32)`)
+                gradient.addColorStop(.0, `rgb(189,0,38)`)
             } else {
                 // this is the case of blue only
                 console.log(this.scanDatamax, "max", this.scanDatamin, "min")
@@ -1919,6 +1922,15 @@ let interpolator = () => {
     return ob
 }
 
+let colorSelector = (t)=> {
+    let pair = []
+if (t < 0.25) {pair = [.25,{r:255,g:255,b:178},{r:254,g:204,b:92}]} else
+if (t < 0.5) {pair = [.5,{r:254,g:204,b:92},{r:253,g:141,b:60}]} else
+if (t < 0.75) {pair = [.75,{r:253,g:141,b:60},{r:240,g:59,b:32}]} else
+if (t < 1.0) {pair = [1,{r:240,g:59,b:32},{r:189,g:0,b:38}]} 
+    return pair
+}
+
 /**
  *Generate an interpolator for colors between two specified colors (rgb).  
  *
@@ -1927,7 +1939,14 @@ let interpolator = () => {
  * @param {*} t numeric value 0 to 1 
  * @returns {}
  */
-let LerpCol = (c1, c2, t) => {
+let LerpCol = (t) => {
+    // hack fix for interpolating between dif values 
+    let colors = colorSelector(t)
+    let tNorm = colors[0]
+    // normalize to the full scale of T values
+    t = (tNorm-t)/tNorm
+    c1 = colors[1]
+    c2 = colors[2]
     let red = Math.round(c1.r + (c2.r - c1.r) * t)
     if (red > 255) {
         red = 255

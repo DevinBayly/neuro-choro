@@ -108,9 +108,10 @@ div.pane {
   flex-wrap:wrap;
 }
 .tooltipholder {
-    width:50%;
+    width:45%;
     font-size: 12px;
     border: 1px black solid;
     border-radius: 20px;
     text-align: center;
+    word-wrap:break-word;
 }
