@@ -1925,11 +1925,10 @@ let interpolator = () => {
 }
 
 let colorSelector = (t)=> {
-    let pair = []
+    let pair = [1,{r:240,g:59,b:32},{r:189,g:0,b:38}]
 if (t < 0.25) {pair = [.25,{r:255,g:255,b:178},{r:254,g:204,b:92}]} else
 if (t < 0.5) {pair = [.5,{r:254,g:204,b:92},{r:253,g:141,b:60}]} else
-if (t < 0.75) {pair = [.75,{r:253,g:141,b:60},{r:240,g:59,b:32}]} else
-if (t < 1.0) {pair = [1,{r:240,g:59,b:32},{r:189,g:0,b:38}]} 
+if (t < 0.75) {pair = [.75,{r:253,g:141,b:60},{r:240,g:59,b:32}]}
     return pair
 }
 
@@ -1949,6 +1948,9 @@ let LerpCol = (t) => {
     t = (tNorm-t)/tNorm
     c1 = colors[1]
     c2 = colors[2]
+    if (c1 == undefined) {
+        console.log(t,c1,c2,tNorm,colors)
+    }
     let red = Math.round(c1.r + (c2.r - c1.r) * t)
     if (red > 255) {
         red = 255
